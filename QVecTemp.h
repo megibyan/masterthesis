@@ -5,37 +5,12 @@
 #include <QPointF>
 #include <QtMath>
 
-template <class QVecTemp>
-static QVector<QVector<T>> SplitVector<T>(QVector<T> items, int clustNum)
+template <class T>
+class QVecTemp
 {
-    QVector<QVector<T>> allGroups = new QVector<QVector<T>>();
-
-    //split the list into equal groups
-    int startIndex = 0;
-    int groupLength = (int)qRound((float)items.count() / (float)clustNum);
-    while (startIndex < items.count())
-    {
-        QVector<T> group = new QVector<T>();
-        group.AddRange(items.GetRange(startIndex, groupLength));
-        startIndex += groupLength;
-
-        //adjust group-length for last group
-        if (startIndex + groupLength > items.count())
-        {
-            groupLength = items.Count - startIndex;
-        }
-
-        allGroups.Add(group);
-    }
-
-    //merge last two groups, if more than required groups are formed
-    if (allGroups.count() > clustNum && allGroups.count() > 2)
-    {
-        allGroups[allGroups.count() - 2].append(allGroups.last());
-        allGroups.remove(allGroups.count() - 1);
-    }
-
-    return (allGroups);
-}
+public:
+    static QVector<QVector<T> > SplitVector(QVector<T>, int);
+private:
+};
 
 #endif // QVECTEMP_H
