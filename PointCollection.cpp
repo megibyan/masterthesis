@@ -1,3 +1,9 @@
+/**
+*	@file PointCollection.cpp
+*	@brief file contains all necessary methods to work with PointCollection
+*	@author Mikayel Egibyan
+*/
+
 #include "PointCollection.h"
 
 /**
@@ -14,9 +20,9 @@ PointCollection::PointCollection()
  * @author Mikayel Egibyan
  * @return The value of the centroid
  */
-QPointF PointCollection::getCenroid()
+QPointF PointCollection::getCentroid()
 {
-    return centorid;
+    return centroid;
 }
 
 /**
@@ -24,9 +30,9 @@ QPointF PointCollection::getCenroid()
  * @author Mikayel Egibyan
  * @param centroid Centroid is Point type object
  */
-void PointCollection::setCentoird(QPointF centroid)
+void PointCollection::setCentroid(QPointF centroid)
 {
-    this->centorid = centroid;
+    this->centroid = centroid;
 }
 
 /**
@@ -35,9 +41,23 @@ void PointCollection::setCentoird(QPointF centroid)
 */
 void PointCollection::updateCentroid()
 {
+    QPointF p;
+    double xSum = 0;
+    double ySum = 0;
+    for(QVector::iterator it=this->begin(); it!=this->end(); it++)
+    {
+        xSum = xSum + it->rx();
+        ySum = ySum + it->ry();
+    }
 
+    centroid.rx() = (xSum / (double)this->count());
+    centroid.ry() = (ySum / (double)this->count());
 }
 
+/**
+ * This method is used to find the nearest point to the centroid
+ * @author Mikayel Egibyan
+ */
 QPointF PointCollection::getNearestPointToCentroid()
 {
     float minDist = 0.0;
@@ -45,8 +65,7 @@ QPointF PointCollection::getNearestPointToCentroid()
     while(!this->empty())
     {
         QPointF point;
-        //Point centroid;
-        float dist = calculateEuclideanDist(point, centorid);
+        float dist = calculateEuclideanDist(point, centroid);
         if(this->indexOf(point) == 0)
         {
             minDist = dist;
@@ -64,7 +83,6 @@ QPointF PointCollection::getNearestPointToCentroid()
     return(this->at(NearestPointToCentroidIndex));
 }
 
-
 /**
  * This method is used to get the Euclidean distance between two points
  * @author Mikayel Egibyan
@@ -79,3 +97,17 @@ float PointCollection::calculateEuclideanDist(QPointF point_1, QPointF point_2)
     return (dist);
 }
 
+QPointF PointCollection::deletePoint(QPointF p)
+{
+    QPointF *removedPoint = new QPointF(p.x(), p.y());
+    this->remove(this->indexOf(*removedPoint));
+    updateCentroid();
+
+    return(*removedPoint);
+}
+
+void PointCollection::addPoint(QPointF p)
+{
+    this->append(p);
+    updateCentroid();
+}
