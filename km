@@ -21,7 +21,7 @@ class kmean_algorithm
 {
 public:
     kmean_algorithm();
-    void readFileOfNotClustereData(QString);
+    void readFileOfNotClustereData();
     void findMinMaxCoordinatesOfDimensions();
     int separatePointsIntoGroups(int);
     void saveClusterMeansToFile();
