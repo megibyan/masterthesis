@@ -1,7 +1,7 @@
 /**
 *	@file Coordinate.cpp
-*	@brief file contains all necessary methods to work with Coordinates.
-*
+*	@brief file contains all necessary methods to work with Coordinates, Vectors.
+*   @brief file also contains some render information
 *	@author Mikayel Egibyan
 */
 
@@ -19,6 +19,7 @@ Coordinate::Coordinate()
     c = new Label;
     minCoordinate = new CoordinateSystemCoordinates(0.01);
     maxCoordinate = new CoordinateSystemCoordinates(0.99);
+    getSelectionType();
 }
 
 /**
@@ -38,7 +39,6 @@ void Coordinate::setMaxCoordinate(float value)
 {
     this->maxCoordinate->setValue(value);
 }
-
 
 /**
 * This method is used to set a label to horizontal axis
@@ -65,6 +65,79 @@ void Coordinate::setLabelY(string value)
 void Coordinate::setLabelCluster(string value)
 {
     this->c->setValue(value);
+}
+
+void Coordinate::setSelectionType(int value)
+{
+    selectionType = value;
+}
+
+int Coordinate::getSelectionType()
+{
+    return selectionType;
+}
+
+bool Coordinate::getPointAlreadySelected()
+{
+    return pointAlreadySelected;
+}
+
+void Coordinate::setPointAlreadySelected(bool value)
+{
+    pointAlreadySelected = value;
+}
+
+void Coordinate::render_rect(int a, int b, bool t, float pushedX, float pushedY, float currentX, float currentY)
+{
+    string horValue = "Dim_" + x->getValue();
+    string vertValue = "Dim_" + y->getValue();
+    QString horV = QString::fromStdString(horValue);
+    QString vertV = QString::fromStdString(vertValue);
+    QHash<QString, QVector<float> >::iterator it;
+
+    if(selectionType == 1)
+    {
+        if(t)
+        {
+            q = true;
+            glPushMatrix();
+            glEnable(GL_BLEND);
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            glColor4f(0, 0, 1, 0.1);
+            glScalef(a, b, 0);
+            glRectf(pushedX, pushedY, currentX, currentY);
+            glFlush();
+            glDisable(GL_BLEND);
+            glPopMatrix();
+        }
+    }
+    if(selectionType == 0)
+    {
+        if(t)
+        {
+            q = false;
+            glPushMatrix();
+            glEnable(GL_BLEND);
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            glColor4f(1, 0, 0, 0.1);
+            glScalef(a, b, 0);
+            glBegin(GL_LINES);
+            glVertex2f(pushedX, pushedY);
+            glVertex2f(currentX, currentY);
+            glEnd();
+            glFlush();
+            glDisable(GL_BLEND);
+            glPopMatrix();
+        }
+    }
+    if(selectionType == 2)
+    {
+        if(t)
+        {
+            q = true;
+
+        }
+    }
 }
 
 /**
@@ -177,6 +250,11 @@ void Coordinate::render_text_information(int a, int b)
     glutBitmapString(GLUT_BITMAP_TIMES_ROMAN_10, (const unsigned char *) "Number of clusters - ");
     glutBitmapString(GLUT_BITMAP_TIMES_ROMAN_10, (const unsigned char *) cluster);
 
+    /*glRasterPos2f(0.78, 0.92);
+    const char *itterations = kmean->getNumberOfIterations();
+    glutBitmapString(GLUT_BITMAP_TIMES_ROMAN_10, (const unsigned char *) "Number of itterations - ");
+    glutBitmapString(GLUT_BITMAP_TIMES_ROMAN_10, (const unsigned char *) itterations);*/
+
     glPopMatrix();
 }
 
@@ -191,11 +269,131 @@ void Coordinate::setRadiusPoint(float value)
 }
 */
 
+void Coordinate::selectPoints(int a, int b, float pushedX, float pushedY, float releasedX, float releasedY)
+{
+    string horValue = "Dim_" + x->getValue();
+    string vertValue = "Dim_" + y->getValue();
+    QString horV = QString::fromStdString(horValue);
+    QString vertV = QString::fromStdString(vertValue);
+    QHash<QString, QVector<float> >::iterator it;
+
+    if(q)
+    {
+        if(selectionType == 2)
+        {
+            float epsilion = 0.01;
+            glPushMatrix();
+            //normalizeHashElements(hash);
+            glEnable(GL_BLEND);
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            glPointSize(10);
+            glColor4f(1, 0, 0, 0.1);
+            glScalef(a, b, 0);
+            glBegin(GL_POINTS);
+            for (it = hash.begin(); it != hash.end(); it++)
+            {
+                for (int j=0; j<it.value().size(); j++)
+                {
+                    if(hash[horV].value(j) >= pushedX && hash[vertV].value(j) >=pushedY)
+                    {
+                        if(hash[horV].value(j) <= pushedX + epsilion  && hash[vertV].value(j) <=pushedY + epsilion)
+                        {
+                            glVertex2f(hash[horV].value(j), hash[vertV].value(j));
+                            setSelectedPointIndex(j);
+                            setSelectedPointXOriginal();
+                            setSelectedPointYOriginal();
+                            setSelectedPointX();
+                            setSelectedPointY();
+                            setPointAlreadySelected(true);
+                        }
+                    }
+                    if(hash[horV].value(j) <= pushedX && hash[vertV].value(j) <=pushedY)
+                    {
+                        if(hash[horV].value(j) >= pushedX + epsilion  && hash[vertV].value(j) >=pushedY + epsilion)
+                        {
+                            glVertex2f(hash[horV].value(j), hash[vertV].value(j));
+                            selectedPointIndex = j;
+                            setSelectedPointXOriginal();
+                            setSelectedPointYOriginal();
+                            setSelectedPointX();
+                            setSelectedPointY();
+                            setPointAlreadySelected(true);
+                        }
+                    }
+                }
+            }
+            glEnd();
+            glFlush();
+            glDisable(GL_BLEND);
+            glPopMatrix();
+        }
+
+        if(selectionType == 1)
+        {
+            selectedPointIndex = 0;
+            glPushMatrix();
+            //normalizeHashElements(hash);
+            glEnable(GL_BLEND);
+            glPointSize(10);
+            glColor4f(0, 0, 1, 0.1);
+            glScalef(a, b, 0);
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            glBegin(GL_POINTS);
+
+            for (it = hash.begin(); it != hash.end(); it++)
+            {
+                for (int j=0; j<it.value().size(); j++)
+                {
+                    if(hash[horV].value(j) >= pushedX && hash[vertV].value(j) >=pushedY)
+                    {
+                        if(hash[horV].value(j) <= releasedX && hash[vertV].value(j) <=releasedY)
+                        {
+                            glVertex2f(hash[horV].value(j), hash[vertV].value(j));
+                        }
+                    }
+                    /*if(hash[horV].value(j) <= pushedX && hash[vertV].value(j) <=pushedY)
+                    {
+                        if(hash[horV].value(j) >= releasedX && hash[vertV].value(j) >=releasedY)
+                        {
+                            glVertex2f(hash[horV].value(j), hash[vertV].value(j));
+                            selctedValueIndexRect = j;
+                            //qDebug() << selectedPointIndexRect.size();
+                        }
+                    }
+                    if(hash[horV].value(j) <= pushedX && hash[vertV].value(j) >=pushedY)
+                    {
+                        if(hash[horV].value(j) >= releasedX && hash[vertV].value(j) <=releasedY)
+                        {
+                            glVertex2f(hash[horV].value(j), hash[vertV].value(j));
+                            selctedValueIndexRect = j;
+                            //qDebug() << selectedPointIndexRect.size();
+                        }
+                    }
+                    if(hash[horV].value(j) >= pushedX && hash[vertV].value(j) <=pushedY)
+                    {
+                        if(hash[horV].value(j) <= releasedX && hash[vertV].value(j) >=releasedY)
+                        {
+                            glVertex2f(hash[horV].value(j), hash[vertV].value(j));
+                            selctedValueIndexRect = j;
+                            //qDebug() << selectedPointIndexRect.size();
+                        }
+                    }*/
+                }
+            }
+
+            glEnd();
+            glFlush();
+            glDisable(GL_BLEND);
+            glPopMatrix();
+        }
+    }
+}
+
 /**
  * This method is used to render the data points got from the .csv file
  * @author Mikayel Egibyan
  */
-void Coordinate::render_data_points(int a, int b)
+void Coordinate::render_data_points(int a, int b, QHash<QString, QVector<float> > h )
 {
     string horValue = "Dim_" + x->getValue();
     string vertValue = "Dim_" + y->getValue();
@@ -204,47 +402,63 @@ void Coordinate::render_data_points(int a, int b)
     QHash<QString, QVector<float> >::iterator it;
 
     glPushMatrix();
-    normalizeHashElements(hash);
+    normalizeHashElements(h);
     glPointSize(5);
     glColor3f(0, 1, 0);
     glScalef(a, b, 0);
-
     glBegin(GL_POINTS);
-    for (it = hash.begin(); it != hash.end(); ++it)
+
+    for (it = h.begin(); it != h.end(); ++it)
     {
         for (int j=0; j<it.value().size(); j++)
         {
 
-            if(hash["Cluster"].value(j) == 1)
+            if(h["Cluster"].value(j) == 1)
             {
                 glColor3f(0, 1, 0);
-                glVertex2f(hash[horV].value(j), hash[vertV].value(j));
+                glVertex2f(h[horV].value(j), h[vertV].value(j));
             }
-            if(hash["Cluster"].value(j) == 2)
+            if(h["Cluster"].value(j) == 2)
             {
                 glColor3f(1, 0, 0);
-                glVertex2f(hash[horV].value(j), hash[vertV].value(j));
+                glVertex2f(h[horV].value(j), h[vertV].value(j));
             }
-            if(hash["Cluster"].value(j) == 3)
+            if(h["Cluster"].value(j) == 3)
             {
                 glColor3f(0, 0, 1);
-                glVertex2f(hash[horV].value(j), hash[vertV].value(j));
+                glVertex2f(h[horV].value(j), h[vertV].value(j));
+            }
+            if(h["Cluster"].value(j) == 4)
+            {
+                glColor3f(0, 1, 1);
+                glVertex2f(h[horV].value(j), h[vertV].value(j));
+            }
+            if(h["Cluster"].value(j) == 5)
+            {
+                glColor3f(0, 0, 0);
+                glVertex2f(h[horV].value(j), h[vertV].value(j));
+            }
+            if(h["Cluster"].value(j) == 6)
+            {
+                glColor3f(1, 1, 0);
+                glVertex2f(h[horV].value(j), h[vertV].value(j));
             }
         }
     }
-    glEnd();
 
+    glEnd();
     glFlush();
     glPopMatrix();
-
 }
 
+
 /**
- * This method is used to read a .csv file
+ * This method is used to read already clustered data from a .csv file
  * @author Mikayel Egibyan
  **/
 void Coordinate::ReadFile(QString filename)
 {
+    readfileBool = true;
     QFile file(filename);
     //QFile file("C:\\Qt\\latest test\\build-Prototype-Desktop_Qt_5_1_0_MinGW_32bit-Debug\\debug\\sample.csv");
     if(!file.open(QIODevice::ReadOnly))
@@ -252,8 +466,6 @@ void Coordinate::ReadFile(QString filename)
         QMessageBox::warning(0, "Error", file.errorString());
     }
     headerLine = file.readLine().trimmed();
-    //headerLine = headerLine.simplified();
-    //headerLine.replace('\n',"");
     headerList = headerLine.split(',');
     listSize = headerList.size();
     for(int t=0; t<listSize; t++)
@@ -270,14 +482,40 @@ void Coordinate::ReadFile(QString filename)
             hash[headerList[j]].push_back(list[j].toFloat());
         }
     }
-
+    hashOriginal = hash;
     normalizeHashElements(hash);
-    QHashIterator<QString, QVector<float> > i(hash);
+    /*QHashIterator<QString, QVector<float> > i(hash);
         while (i.hasNext())
         {
             i.next();
             qDebug() << i.key() << ":" << i.value();
+        }*/
+}
+
+void Coordinate::storeOriginalData(QString filename)
+{
+    QFile file(filename);
+    if(!file.open(QIODevice::ReadOnly))
+    {
+        QMessageBox::warning(0, "Error", file.errorString());
+    }
+    QString headerLineOriginal = file.readLine().trimmed();
+    QStringList headerListOriginal = headerLineOriginal.split(',');
+    int listSizeOriginal = headerListOriginal.size();
+    for(int t=0; t<listSizeOriginal; t++)
+    {
+        QVector<float> vec;
+        hashOriginal[headerListOriginal[t]] = vec;
+    }
+    while(!file.atEnd())
+    {
+        QString lineOriginal = file.readLine();
+        QStringList listOriginal = lineOriginal.split(',');
+        for(int j=0; j<listSizeOriginal; j++)
+        {
+            hashOriginal[headerListOriginal[j]].push_back(listOriginal[j].toFloat());
         }
+    }
 }
 
 /**
@@ -296,7 +534,7 @@ void Coordinate::normalizeHashElements(QHash<QString, QVector<float> > &qhash)
     float a = maxCoordinate->getValue();
     float b = minCoordinate->getValue();
     QHash<QString, QVector<float> >::iterator it;
-    for (it = qhash.begin(); it != qhash.end(); ++it)
+    for (it = qhash.begin(); it != qhash.end(); it++)
     {
         if (it.key() != header_name_constChar)
        {
@@ -304,6 +542,31 @@ void Coordinate::normalizeHashElements(QHash<QString, QVector<float> > &qhash)
           {
              old_value = it.value().at(j);
              new_value = (old_value-min)/(max-min)*(a-b) + b;
+             it.value().replace(j, new_value);
+          }
+       }
+    }
+}
+
+void Coordinate::denormalizeHashElements(QHash<QString, QVector<float> > &qhash)
+{
+    float new_value;
+    float old_value;
+    string header_name_string = "Cluster";
+    const char *header_name_constChar = header_name_string.c_str();
+    float min = getMinHash(qhash);
+    float max = getMaxHash(qhash);
+    float a = maxCoordinate->getValue();
+    float b = minCoordinate->getValue();
+    QHash<QString, QVector<float> >::iterator it;
+    for (it = qhash.begin(); it != qhash.end(); ++it)
+    {
+        if (it.key() != header_name_constChar)
+       {
+          for (int j=0; j<it.value().size(); j++)
+          {
+             old_value = it.value().at(j);
+             new_value = (((max-min)*old_value)+(min*(a-b))-b)/(a-b);
              it.value().replace(j, new_value);
           }
        }
@@ -396,3 +659,171 @@ float Coordinate::getMin(QVector<float> vector)
         }
     return min;
 }
+
+void Coordinate::getSelectedPoint()
+{
+    if(readfileBool)
+    {
+        if(selectionType == 1)
+        {
+            QFile file("C:\\Qt\\latest test\\build-Prototype-Desktop_Qt_5_1_0_MinGW_32bit-Debug\\debug\\SelectedValues.txt");
+            file.open(QIODevice::ReadWrite | QIODevice::Text);
+            QTextStream outq(&file);
+            if(file.isOpen())
+            {
+                //outq << j << '\n';
+                file.close();
+            }
+            else
+            {
+                QMessageBox::warning(0, "Error", file.errorString());
+            }
+
+        }
+        if(selectionType == 2)
+        {
+            QFile file("C:\\Qt\\latest test\\build-Prototype-Desktop_Qt_5_1_0_MinGW_32bit-Debug\\debug\\SelectedValue.txt");
+            file.open(QIODevice::WriteOnly | QIODevice::Text);
+            QTextStream outq(&file);
+            if(file.isOpen())
+            {
+                for(int d = 1; d < listSize; d++)
+                {
+                    std::string s;
+                    std::stringstream out;
+                    out << d;
+                    s = out.str();
+                    string dim = "Dim_" + s;
+                    QString Dim = QString::fromStdString(dim);
+                    outq << Dim << ',';
+                }
+                outq << "Cluster" << '\n';
+                for(int d = 1; d < listSize; d++)
+                {
+                    std::string s;
+                    std::stringstream out;
+                    out << d;
+                    s = out.str();
+                    string dim = "Dim_" + s;
+                    QString Dim = QString::fromStdString(dim);
+                    outq << hash[Dim].value(selectedPointIndex) << ',';
+                }
+                outq << hash["Cluster"].value(selectedPointIndex);
+                file.close();
+            }
+            else
+            {
+                QMessageBox::warning(0, "Error", file.errorString());
+            }
+        }
+    }
+}
+
+void Coordinate::renderLabelForPoint(int a, int b, float x, float y, float xOrig, float yOrig)
+{
+    if(selectionType == 2)
+    {
+        glPushMatrix();
+        glColor3f(1, 0, 1);
+        glScalef(a, b, 0);
+        stringstream ss (stringstream::in | stringstream::out);
+        ss << xOrig;
+        string xChar = ss.str();
+
+        stringstream s (stringstream::in | stringstream::out);
+        s << yOrig;
+        string yChar = s.str();
+
+        string delimiter = " / ";
+
+        glRasterPos2f(x - 0.015, y + 0.015);
+        const char * labelX = xChar.c_str();
+        const char * labelY = yChar.c_str();
+        const char * delimiterChar = delimiter.c_str();
+        glutBitmapString(GLUT_BITMAP_HELVETICA_10, (const unsigned char *) labelX);
+        glutBitmapString(GLUT_BITMAP_HELVETICA_10, (const unsigned char *) delimiterChar);
+        glutBitmapString(GLUT_BITMAP_HELVETICA_10, (const unsigned char *) labelY);
+        glPopMatrix();
+    }
+}
+
+void Coordinate::setSelectedPointXOriginal()
+{
+    string horValue = "Dim_" + x->getValue();
+    QString horV = QString::fromStdString(horValue);
+    selectedPointXOriginal = hashOriginal[horV].value(getSelectedPointIndex());
+    //qDebug() << selectedPointXOriginal << hashOriginal[horV].value(getSelectedPointIndex());
+}
+
+float Coordinate::getSelectedPointXOriginal()
+{
+    return selectedPointXOriginal;
+}
+
+void Coordinate::setSelectedPointYOriginal()
+{
+    string vertValue = "Dim_" + y->getValue();
+    QString vertV = QString::fromStdString(vertValue);
+    selectedPointYOriginal = hashOriginal[vertV].value(getSelectedPointIndex());
+}
+
+float Coordinate::getSelectedPointYOriginal()
+{
+    return selectedPointYOriginal;
+}
+
+void Coordinate::setSelectedPointX()
+{
+    string horValue = "Dim_" + x->getValue();
+    QString horV = QString::fromStdString(horValue);
+    selectedPointX = hash[horV].value(getSelectedPointIndex());
+}
+
+float Coordinate::getSelectedPointX()
+{
+    return selectedPointX;
+}
+
+void Coordinate::setSelectedPointY()
+{
+    string vertValue = "Dim_" + y->getValue();
+    QString vertV = QString::fromStdString(vertValue);
+    selectedPointY = hash[vertV].value(getSelectedPointIndex());
+}
+
+float Coordinate::getSelectedPointY()
+{
+    return selectedPointY;
+}
+
+void Coordinate::setRenderTogle(bool value)
+{
+    renderTogle = value;
+}
+
+bool Coordinate::getRenderTogle()
+{
+    return renderTogle;
+}
+
+QHash<QString, QVector<float> > Coordinate::getHashOriginal()
+{
+    return hashOriginal;
+}
+
+QHash<QString, QVector<float> > Coordinate::getHash()
+{
+    return hash;
+}
+
+void Coordinate::setSelectedPointIndex(int value)
+{
+    selectedPointIndex = value;
+}
+
+int Coordinate::getSelectedPointIndex()
+{
+    return selectedPointIndex;
+}
+
+
