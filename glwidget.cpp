@@ -1,8 +1,6 @@
-
 /**
 *	@file glwidget.cpp
-*	@brief file contains all necessary methods to work with glwidget.
-*
+*	@brief file contains all necessary methods to work with glwidget
 *	@author Mikayel Egibyan
 */
 
@@ -17,6 +15,13 @@ GLWidget::GLWidget(QWidget *parent) :
 {
     connect(&timer, SIGNAL(timeout()), this, SLOT(updateGL()));
     timer.start();
+    getQ();
+    getCurrentX();
+    getCurrentY();
+    getPushedX();
+    getPushedY();
+    getReleasedX();
+    getReleasedY();
 }
 
 /**
@@ -26,7 +31,102 @@ GLWidget::GLWidget(QWidget *parent) :
 void GLWidget::updateGL_mech()
 {
     updateGL();
+    qDebug() << QWidget::width();
+    qDebug() << getNormalizedWidth(200);
+    qDebug() << selectedPointX << selectedPointY;
 }
+
+float GLWidget::getNormalizedWidth(int value)
+{
+    float a = (float)value;
+    float min = 0;
+    float max = 1;
+    return (a/(QWidget::width()))*(max-min) + min;
+}
+
+float GLWidget::getNormalizedHeight(int value)
+{
+    float a = (float)value;
+    float min = 0;
+    float max = 1;
+    return (a/(QWidget::height()))*(max-min) + min;
+}
+
+float GLWidget::rndup(float n)
+{
+    return floor(n*10000+0.5)/10000;
+}
+
+void GLWidget::setQ(bool value)
+{
+    q = value;
+}
+
+bool GLWidget::getQ()
+{
+    return q;
+}
+
+void GLWidget::setPushedX(float value)
+{
+    pushedX = value;
+}
+
+float GLWidget::getPushedX()
+{
+    return pushedX;
+}
+
+void GLWidget::setPushedY(float value)
+{
+    pushedY = value;
+}
+
+float GLWidget::getPushedY()
+{
+    return pushedY;
+}
+
+void GLWidget::setCurrentX(float value)
+{
+    currentX = value;
+}
+
+float GLWidget::getCurrentX()
+{
+    return currentX;
+}
+
+void GLWidget::setCurrentY(float value)
+{
+    currentY = value;
+}
+
+float GLWidget::getCurrentY()
+{
+    return currentY;
+}
+
+void GLWidget::setReleasedX(float value)
+{
+    releasedX = value;
+}
+
+float GLWidget::getReleasedX()
+{
+    return releasedX;
+}
+
+void GLWidget::setReleasedY(float value)
+{
+     releasedY = value;
+}
+
+float GLWidget::getReleasedY()
+{
+    return releasedY;
+}
+
 
 /**
 * This method is used to initialize the GL
@@ -44,17 +144,18 @@ void GLWidget::initializeGL()
 void GLWidget::paintGL()
 {
     glClear(GL_COLOR_BUFFER_BIT);
-    //glScalef(QWidget::height(), QWidget::width(), 0);
     coordinateT.render_hor(1, 0, 0, QWidget::width(), QWidget::height());
     coordinateT.render_label_X(QWidget::width(), QWidget::height());
-    //qDebug() << width <<"/"<< height;
-
     coordinateT.render_vert(0, 0, 1, QWidget::width(), QWidget::height());
     coordinateT.render_label_Y(QWidget::width(), QWidget::height());
-
     coordinateT.render_text_information(QWidget::width(), QWidget::height());
-    //coordinateT.setRadiusPoint(5);
-    coordinateT.render_data_points(QWidget::width(), QWidget::height());
+    if(coordinateT.getRenderTogle())
+    {
+        coordinateT.render_data_points(QWidget::width(), QWidget::height(), getHashToRender());
+    }
+    coordinateT.render_rect(QWidget::width(), QWidget::height(), q, pushedX, pushedY, currentX, currentY);
+    coordinateT.selectPoints(QWidget::width(), QWidget::height(), pushedX, pushedY, releasedX, releasedY);
+    coordinateT.renderLabelForPoint(QWidget::width(), QWidget::height(), coordinateT.getSelectedPointX(), coordinateT.getSelectedPointY(), coordinateT.getSelectedPointXOriginal(), coordinateT.getSelectedPointYOriginal());
 }
 
 /**
@@ -69,6 +170,17 @@ void GLWidget::resizeGL(int w, int h)
     gluOrtho2D(0, w, 0, h);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
+}
+
+
+void GLWidget::setHashToRender(QHash<QString, QVector<float> > hash)
+{
+    hashToRender = hash;
+}
+
+QHash<QString, QVector<float> > GLWidget::getHashToRender()
+{
+    return hashToRender;
 }
 
 
