@@ -30,6 +30,7 @@ void kmean_algorithm::sortFinalFile()
 void kmean_algorithm::readFileOfNotClustereData(QString filename)
 {
     QFile file(filename);
+    //QFile file("C:\\Qt\\latest test\\build-Prototype-Desktop_Qt_5_1_0_MinGW_32bit-Debug\\debug\\iris.csv");
     if(!file.open(QIODevice::ReadOnly))
     {
         QMessageBox::warning(0, "Error", file.errorString());
@@ -62,13 +63,13 @@ void kmean_algorithm::readFileOfNotClustereData(QString filename)
         }
     }
     //qDebug() << "hash_notClustered[0].size()" << hash_notClustered[0].size();
-/*
+
     QHashIterator<int, QVector<float> > i(hash_notClustered);
     while (i.hasNext())
     {
         i.next();
         qDebug() << i.key() << ":" << i.value();
-    }*/
+    }
 }
 
 /**
@@ -221,7 +222,7 @@ void kmean_algorithm::init()
  **/
 void kmean_algorithm::doKmeans()
 {
-    //readFileOfNotClustereData(filename);
+    //readFileOfNotClustereData();
     calculateElementsInFile();
     findMinMaxCoordinatesOfDimensions();
     init();
