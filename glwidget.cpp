@@ -182,6 +182,3 @@ QHash<QString, QVector<float> > GLWidget::getHashToRender()
 {
     return hashToRender;
 }
-
-
-
