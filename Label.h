@@ -1,7 +1,6 @@
 /**
 *	@file Label.h
-*	@brief file contains the definaion of the class Label.
-*
+*	@brief file contains the definaion of the class Label
 *	@author Mikayel Egibyan
 */
 
