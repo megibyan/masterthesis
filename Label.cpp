@@ -1,7 +1,6 @@
 /**
 *	@file Label.cpp
-*	@brief file contains all necessary methods to work with Label.
-*
+*	@brief file contains all necessary methods to work with Label
 *	@author Mikayel Egibyan
 */
 
