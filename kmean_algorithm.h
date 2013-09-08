@@ -26,7 +26,9 @@ public:
     int separatePointsIntoGroups(int);
     void saveClusterMeansToFile();
     void saveClusterReferencesToFile(int a[]);
+    void saveClusterReferencesToFileStepResult();
     void sortFinalFile();
+    void renderResults();
     int calculateElementsInFile();
     void init();
     void doKmeans();
@@ -34,20 +36,36 @@ public:
     void setK(int);
     int getK();
     bool getReadStatus();
+    void setReadStatus(bool);
     int getNumberOfIterations();
+    void setNumberOfIterations(int);
+    int getNumberOfAllOverDataPoints();
+    int getHashKeySize();
+    QHash<int, QVector<float> > getHashNotClustered();
+    void setHashNotClustered(QHash<int, QVector<float> >);
+    int getmanualNumberOfIterations();
+    void setmanualNumberOfIterations(int);
+    bool getmanualIndexChanged();
+    void setmanualIndexChanged(bool);
 
 private:
     QHash<int, QVector<float> > hash_notClustered;
+    QVector<QHash<int, QVector<float> > > stepResult;
+    QVector<QVector<int> > referValueStepResult;
+    QVector<int> referValueStepResultVec;
     int numberOfAllOverDataPoints;
     int numberOfElements;
     QVector<float> minDim;
     QVector<float> maxDim;
-    int numberOfClusters = 3;
+    int K;
+    int numberOfClusters;
     QHash<int, QVector<float> > clusterMeanCoordinate;
     QHash<int, QVector<float> > prevClusterMeanCoordinate;
     int hashKeySize;
     bool fileIsRead = false;
     int it;
+    int manualNumberOfIterations;
+    bool manualIndexChanged = false;
 };
 
 #endif // KMEAN_ALGORITHM_H
