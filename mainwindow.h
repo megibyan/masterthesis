@@ -40,7 +40,20 @@ public:
     void mousePressEvent(QMouseEvent *eventPress);
     void mouseReleaseEvent(QMouseEvent *releaseEvent);
     void createPopUp();
+    void createPopUpMerge();
     QPoint getMouseGlobalPosition();
+    void setPopUpTogle(bool);
+    bool getPopUpTogle();
+    void setPopUpTogleMerge(bool);
+    bool getPopUpTogleMerge();
+    float calculateHalfSpaces(float, float,float, float, float, float);
+    void determineLinePress(QPointF);
+    void determineLineRelease(QPointF);
+    void determineLine();
+    QPointF getLinePress();
+    QPointF getLineRelease();
+    bool getdivisionMode();
+    void setdivisionMode(bool);
 
 private slots:    
     void on_actionExit_triggered();
@@ -52,18 +65,20 @@ private slots:
     void on_clust_num_dropbox_currentIndexChanged();
     //Coordinate cT;
     void on_sellection_type_dropbox_currentIndexChanged();
-    void promoteTo1();
-    void promoteTo2();
-    void promoteTo3();
-    void promoteTo4();
-    void promoteTo5();
-    void promoteTo6();
     void on_actionInformation_triggered();
     void on_pushButton_2_pressed();
     void setHashOrig(QHash<QString, QVector<float> >);
     QHash<QString, QVector<float> > getHashOrig();
-
     void on_pushButton_3_clicked();
+    void triggeredPromote(QAction*);
+    void triggeredMerge(QAction*);
+    void on_actionSave_changes_triggered();
+    void AddToNewPromote();
+    void on_radioButton_clicked();
+    void divideCluster();
+    void on_radioButton_2_clicked();
+    void on_Reset_clicked();
+    void on_step_cpmbo_box_currentIndexChanged();
 
 private:
     QVector<float> mouse;
@@ -77,16 +92,20 @@ private:
     float eye_z;
     float WidgetW;
     float WidgetH;
+    QPointF lineBegin;
+    QPointF lineEnd;
     QPointF buttonPressCoordinates;
     QPointF buttonReleaseCoordinates;
     QPointF mouseCurrentPosition;
     bool m;
-    //Mouse *mouseX;
-    //Mouse *mouseY;
     QPoint mouseGlobalPosition;
     QHash<QString, QVector<float> > hashOrig;
     int index;
+    bool popUpTogle = false;
+    bool popUpTogleMerge = false;
+    QVector<int> indicesRect;
+    QHash<QString, QVector<float> > stepByStepCluster;
+    bool divisionMode=false;
 };
 
 #endif // MAINWINDOW_H
-
