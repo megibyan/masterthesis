@@ -10,14 +10,14 @@
 #include <QGLWidget>
 #include <QTimer>
 #include <QKeyEvent>
-#include <GL/glu.h>
+#include <QtMath>
+#include <QDebug>
 #include <QGroupBox>
+#include <GL/glu.h>
 #include <mainwindow.h>
 #include "Coordinate.h"
 #include "Scene.h"
-#include <QDebug>
 #include "CoordinateSystemCoordinates.h"
-#include <QtMath>
 #include "kmean_algorithm.h"
 
 class GLWidget : public QGLWidget
@@ -50,6 +50,8 @@ public:
     float getReleasedY();
     void setHashToRender(QHash<QString, QVector<float> >);
     QHash<QString, QVector<float> > getHashToRender();
+    int getNumberOfIteration();
+    void setNumberOfIteration(int);
 
 private:
     bool q;
@@ -64,6 +66,7 @@ private:
     float releasedY;
     float selectedPointX;
     float selectedPointY;
+    int numberOfiterations;
     QHash<QString, QVector<float> > hashToRender;
 };
 
