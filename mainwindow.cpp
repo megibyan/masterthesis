@@ -19,9 +19,6 @@ MainWindow::MainWindow(QWidget *parent) :
     ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-    //dim = new Coordinate;
-    //mouseX = new Mouse(this->mapFromGlobal(QCursor::pos()).x());
-    //mouseY = new Mouse(this->mapFromGlobal(QCursor::pos()).y());
     GLWidget *widget = this->findChild<GLWidget *>("glwidget");
     connect(ui->actionLoad_file, SIGNAL(triggered()), this, SLOT(Load()));
     connect(ui->actionK_mean_the_data, SIGNAL(triggered()), this, SLOT(LoadKmeans()));
@@ -29,31 +26,22 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->clust_num_dropbox->setCurrentIndex(0);
     widget->kmean.setK(ui->clust_num_dropbox->currentIndex() + 1);
     widget->coordinateT.setSelectionType(ui->sellection_type_dropbox->currentIndex());
-    //WidgetW = widget->getWidgetWidth();
-    //WidgetH = widget->getWidgetHeight();
-    /* modelH = qobject_cast<QStandardItemModel *>(ui->hor_axis_dropbox->model());
-    modelV = qobject_cast<QStandardItemModel *>(ui->vert_axis_dropbox->model());
-    itemV = modelV->item(ui->hor_axis_dropbox->currentIndex());
-    itemH = modelH->item(ui->vert_axis_dropbox->currentIndex());*/
-
     for(int i = 1; i <= 6; i++)
         ui->clust_num_dropbox->addItem(QString::number(i));
-
     for(int i = 1; i <= 4; i++)
         ui->hor_axis_dropbox->addItem(QString::number(i));
-
     for(int j = 1; j <= 4; j++)
         ui->vert_axis_dropbox->addItem(QString::number(j));
-
-   // ui->hor_axis_dropbox->setCurrentIndex(0);
-   // ui->vert_axis_dropbox->setItemData(0, 0, Qt::UserRole -1);
-
-   // ui->vert_axis_dropbox->setCurrentIndex(1);
-    //ui->hor_axis_dropbox->setItemData(1, 0, Qt::UserRole -1);
-
     widget->coordinateT.setLabelX("X");
     widget->coordinateT.setLabelY("Y");
     widget->coordinateT.setLabelCluster("n/a");
+    QString labelX = ui->vert_axis_dropbox->currentText();
+    string strX = labelX.toStdString();
+    QString labelY = ui->vert_axis_dropbox->currentText();
+    string strY = labelY.toStdString();
+    widget->coordinateT.setLabelX(strX);
+    widget->coordinateT.setLabelY(strY);
+    kmean.setK(1);
 }
 
 /**
@@ -76,6 +64,11 @@ void MainWindow::keyPressEvent( QKeyEvent *keyEvent)
         exit(0);
 }
 
+/**
+ * This method is used to handle the mouse release event
+ * @author Mikayel Egibyan
+ * @param releaseEvent
+ */
 void MainWindow::mouseReleaseEvent(QMouseEvent *releaseEvent)
 {
     if(releaseEvent->button() & Qt::LeftButton)
@@ -88,230 +81,367 @@ void MainWindow::mouseReleaseEvent(QMouseEvent *releaseEvent)
         float y_ = 1.0 - y;
         buttonReleaseCoordinates.setX(x);
         buttonReleaseCoordinates.setY(y_);
-        qDebug() << buttonReleaseCoordinates.x() << buttonReleaseCoordinates.y();
+        //qDebug() << buttonReleaseCoordinates.x() << buttonReleaseCoordinates.y();
         widget->setQ(false);
         widget->setReleasedX(buttonReleaseCoordinates.x());
         widget->setReleasedY(buttonReleaseCoordinates.y());
-    }
-}
-
-void MainWindow::promoteTo1()
-{
-    GLWidget *widget = this->findChild<GLWidget *>("glwidget");
-    if(kmean.getK() < 1)
-    {
-        QMessageBox::warning(this, "Warning", "No cluster found. The point is added to new cluster.");
-        if(getHashOrig().isEmpty())
-            setHashOrig(widget->coordinateT.getHashOriginal());
-        getHashOrig();
-        index = widget->coordinateT.getSelectedPointIndex();
-        hashOrig["Cluster"].replace(index, 1);
-        setHashOrig(hashOrig);
-        widget->setHashToRender(hashOrig);
-    }
-    else
-    {
-        if(getHashOrig().isEmpty())
-            setHashOrig(widget->coordinateT.getHashOriginal());
-        getHashOrig();
-        index = widget->coordinateT.getSelectedPointIndex();
-        if(hashOrig["Cluster"].value(index) == 1)
+        if(widget->coordinateT.getSelectionType() == 0 && getdivisionMode())
         {
-            QMessageBox::warning(this, "Warning", "The selected point is already from first  cluster.");
-        }
-        else
-        {
-            hashOrig["Cluster"].replace(index, 1);
-            setHashOrig(hashOrig);
-            widget->setHashToRender(hashOrig);
+            determineLineRelease(buttonReleaseCoordinates);
         }
     }
 }
 
-void MainWindow::promoteTo2()
+/**
+ * This method is used to create a pop-up menu for merge action
+ * @author Mikayel Egibyan
+ */
+void MainWindow::createPopUpMerge()
 {
-    GLWidget *widget = this->findChild<GLWidget *>("glwidget");
-    if(kmean.getK() < 2)
+    if(getPopUpTogleMerge())
     {
-        QMessageBox::warning(this, "Warning", "No cluster found. The point is added to new cluster.");
-        if(getHashOrig().isEmpty())
-            setHashOrig(widget->coordinateT.getHashOriginal());
-        getHashOrig();
-        index = widget->coordinateT.getSelectedPointIndex();
-        hashOrig["Cluster"].replace(index, 2);
-        setHashOrig(hashOrig);
-        widget->setHashToRender(hashOrig);
-    }
-    else
-    {
-        if(getHashOrig().isEmpty())
-            setHashOrig(widget->coordinateT.getHashOriginal());
-        getHashOrig();
-        index = widget->coordinateT.getSelectedPointIndex();
-        if(hashOrig["Cluster"].value(index) == 2)
+        QPoint position;
+        position = getMouseGlobalPosition();
+        QMenu * menu = new QMenu();
+        int last = kmean.getK();
+        for(int i = 1; i <= last; i++)
         {
-            QMessageBox::warning(this, "Warning", "The selected point is already from first  cluster.");
+            QAction * action = new QAction(QString("Merge with %1").arg(i), menu);
+            action->setProperty("index", i);
+            menu->addAction(action);
         }
-        else
-        {
-            hashOrig["Cluster"].replace(index, 2);
-            setHashOrig(hashOrig);
-            widget->setHashToRender(hashOrig);
-        }
+        menu->addAction("Divide", this, SLOT(divideCluster()));
+        connect(menu, SIGNAL(triggered(QAction*)), SLOT(triggeredMerge(QAction*)));
+        menu->popup(position);
     }
 }
 
-void MainWindow::promoteTo3()
+/**
+ * This method is used to set values to the line's start point
+ * @author Mikayel Egibyan
+ */
+void MainWindow::determineLinePress(QPointF press)
 {
-    GLWidget *widget = this->findChild<GLWidget *>("glwidget");
-    if(kmean.getK() < 3)
-    {
-        QMessageBox::warning(this, "Warning", "No cluster found. The point is added to new cluster.");
-        if(getHashOrig().isEmpty())
-            setHashOrig(widget->coordinateT.getHashOriginal());
-        getHashOrig();
-        index = widget->coordinateT.getSelectedPointIndex();
-        hashOrig["Cluster"].replace(index, 3);
-        setHashOrig(hashOrig);
-        widget->setHashToRender(hashOrig);
-    }
-    else
-    {
-        if(getHashOrig().isEmpty())
-            setHashOrig(widget->coordinateT.getHashOriginal());
-        getHashOrig();
-        index = widget->coordinateT.getSelectedPointIndex();
-        if(hashOrig["Cluster"].value(index) == 3)
-        {
-            QMessageBox::warning(this, "Warning", "The selected point is already from first  cluster.");
-        }
-        else
-        {
-            hashOrig["Cluster"].replace(index, 3);
-            setHashOrig(hashOrig);
-            widget->setHashToRender(hashOrig);
-        }
-    }
+    lineBegin.setX(press.x());
+    lineBegin.setY(press.y());
+    qDebug() << lineBegin.x() << lineBegin.y();
 }
 
-void MainWindow::promoteTo4()
+/**
+ * This method is used to set values to the line's end point
+ * @author Mikayel Egibyan
+ */
+void MainWindow::determineLineRelease(QPointF release)
 {
-    GLWidget *widget = this->findChild<GLWidget *>("glwidget");
-    if(kmean.getK() < 4)
-    {
-        QMessageBox::warning(this, "Warning", "No cluster found. The point is added to new cluster.");
-        if(getHashOrig().isEmpty())
-            setHashOrig(widget->coordinateT.getHashOriginal());
-        getHashOrig();
-        index = widget->coordinateT.getSelectedPointIndex();
-        hashOrig["Cluster"].replace(index, 4);
-        setHashOrig(hashOrig);
-        widget->setHashToRender(hashOrig);
-    }
-    else
-    {
-        if(getHashOrig().isEmpty())
-            setHashOrig(widget->coordinateT.getHashOriginal());
-        getHashOrig();
-        index = widget->coordinateT.getSelectedPointIndex();
-        if(hashOrig["Cluster"].value(index) == 4)
-        {
-            QMessageBox::warning(this, "Warning", "The selected point is already from first  cluster.");
-        }
-        else
-        {
-            hashOrig["Cluster"].replace(index, 4);
-            setHashOrig(hashOrig);
-            widget->setHashToRender(hashOrig);
-        }
-    }
+    lineEnd.setX(release.x());
+    lineEnd.setY(release.y());
+    qDebug() << lineEnd.x() << lineEnd.y();
 }
 
-void MainWindow::promoteTo5()
+/**
+ * This method is used to get the line
+ * @author Mikayel Egibyan
+ */
+void MainWindow::determineLine()
 {
     GLWidget *widget = this->findChild<GLWidget *>("glwidget");
-    if(kmean.getK() < 5)
-    {
-        QMessageBox::warning(this, "Warning", "No cluster found. The point is added to new cluster.");
-        if(getHashOrig().isEmpty())
-            setHashOrig(widget->coordinateT.getHashOriginal());
-        getHashOrig();
-        index = widget->coordinateT.getSelectedPointIndex();
-        hashOrig["Cluster"].replace(index, 5);
-        setHashOrig(hashOrig);
-        widget->setHashToRender(hashOrig);
-    }
-    else
-    {
-        if(getHashOrig().isEmpty())
-            setHashOrig(widget->coordinateT.getHashOriginal());
-        getHashOrig();
-        index = widget->coordinateT.getSelectedPointIndex();
-        if(hashOrig["Cluster"].value(index) == 5)
+    qDebug() << calculateHalfSpaces(hashOrig["Dim_1"].value(1), hashOrig["Dim_2"].value(1), getLinePress().x(), getLinePress().y(), getLineRelease().x(), getLineRelease().y());
+    /*string horValue = "Dim_" +
+    string vertValue = "Dim_" + y->getValue();
+    QString horV = QString::fromStdString(horValue);
+    QString vertV = QString::fromStdString(vertValue);
+    QHash<QString, QVector<float> >::iterator it;
+    QPointF press = getLinePress();
+    QPointF release = getLineRelease();
+    qDebug() << press.x() << press.y();
+    qDebug() << release.x() << release.y();*/
+    /*if(getHashOrig().isEmpty())
+        setHashOrig(widget->coordinateT.getHashOriginal());
+    getHashOrig();
+    int cluster = widget->coordinateT.getNumberOfClusterSelectedCentroid();
+    int a = widget->coordinateT.findNumberOfClusters() + 1;
+    for(int u=0; u<hashOrig["Cluster"].size(); u++)
         {
-            QMessageBox::warning(this, "Warning", "The selected point is already from first  cluster.");
+            if(hashOrig["Cluster"].value(u) == cluster)
+            {
+                if(calculateHalfSpaces(hashOrig["Dim_1"].value(u), hashOrig["Dim_2"].value(u), press.x(), press.y(), release.x(),release.y()) < 0)
+                        qDebug() << "Less";
+            }
         }
-        else
-        {
-            hashOrig["Cluster"].replace(index, 5);
-            setHashOrig(hashOrig);
-            widget->setHashToRender(hashOrig);
-        }
-    }
+    setHashOrig(hashOrig);
+    widget->setHashToRender(hashOrig);*/
 }
 
-void MainWindow::promoteTo6()
+/**
+ * This method is used to get the line's start point
+ * @author Mikayel Egibyan
+ */
+QPointF MainWindow::getLinePress()
+{
+    return lineBegin;
+}
+
+/**
+ * This method is used to get the line's end point
+ * @author Mikayel Egibyan
+ */
+QPointF MainWindow::getLineRelease()
+{
+    return lineEnd;
+}
+
+/**
+ * This method is used to get if the cluster is divided
+ * @author Mikayel Egibyan
+ */
+bool MainWindow::getdivisionMode()
+{
+    return divisionMode;
+}
+
+/**
+ * This method is used to set if the cluster is divided
+ * @author Mikayel Egibyan
+ */
+void MainWindow::setdivisionMode(bool value)
+{
+    divisionMode = value;
+}
+
+/**
+ * This method is used to divide the cluster
+ * @author Mikayel Egibyan
+ */
+void MainWindow::divideCluster()
 {
     GLWidget *widget = this->findChild<GLWidget *>("glwidget");
-    if(kmean.getK() < 6)
+    ui->sellection_type_dropbox->setCurrentIndex(0);
+    int cluster = widget->coordinateT.getNumberOfClusterSelectedCentroid();
+
+    if(widget->coordinateT.getSelectionType() == 0)
     {
-        QMessageBox::warning(this, "Warning", "No cluster found. The point is added to new cluster.");
-        if(getHashOrig().isEmpty())
-            setHashOrig(widget->coordinateT.getHashOriginal());
-        getHashOrig();
-        index = widget->coordinateT.getSelectedPointIndex();
-        hashOrig["Cluster"].replace(index, 6);
-        setHashOrig(hashOrig);
-        widget->setHashToRender(hashOrig);
+        qDebug() << true;
+        setdivisionMode(true);
+        determineLine();
     }
-    else
+    /*if(widget->coordinateT.getSelectionType() == 0)
     {
         if(getHashOrig().isEmpty())
             setHashOrig(widget->coordinateT.getHashOriginal());
         getHashOrig();
-        index = widget->coordinateT.getSelectedPointIndex();
-        if(hashOrig["Cluster"].value(index) == 6)
+
+
+        //qDebug() << "End X" << widget->getReleasedX() << '\t'<< "End Y" << widget->getReleasedX() << '\n';
+
+        //setMouseTracking(true);
+        //qDebug() << "Begin X" << buttonPressCoordinates.x() << '\t'<< "Begin Y" << buttonPressCoordinates.x() << '\n';
+        //qDebug() << "End X" << buttonReleaseCoordinates.x() << '\t'<< "End Y" << buttonReleaseCoordinates.x() << '\n';
+
+        if(widget->coordinateT.getlineIsDrawn())
         {
-            QMessageBox::warning(this, "Warning", "The selected point is already from first  cluster.");
+            qDebug() << "true";
         }
-        else
+        if(!widget->coordinateT.getlineIsDrawn())
         {
-            hashOrig["Cluster"].replace(index, 6);
-            setHashOrig(hashOrig);
-            widget->setHashToRender(hashOrig);
+            qDebug() << "false";
         }
-    }
+
+          //      setMouseTracking(true);
+            /*
+            //float r = calculateHalfSpaces(hashOrig["Dim_1"].at(0), hashOrig["Dim_2"].at(0));
+            //qDebug() << r;*/
+
+        /*
+        {
+         for(int u=0; u<hashOrig["Cluster"].size(); u++)
+         {
+            if(hashOrig["Cluster"].value(u) == cluster)
+            {
+
+                if(r < 0)
+                {
+                    hashOrig["Cluster"].replace(u, a);
+                }
+            }
+         }
+        }*/
+        //setHashOrig(hashOrig);
+        //widget->setHashToRender(hashOrig);
 }
+
+/**
+ * This method is used to creat a pop-up menu for promotion
+ * @author Mikayel Egibyan
+ */
 void MainWindow::createPopUp()
 {
-    QPoint position;
-    position = getMouseGlobalPosition();
-    GLWidget *widget = this->findChild<GLWidget *>("glwidget");
-    QMenu menu(widget);
-    menu.addAction("Promote to 1", this, SLOT(promoteTo1()))->setDisabled(false);
-    menu.addAction("Promote to 2", this, SLOT(promoteTo2()))->setDisabled(false);
-    menu.addAction("Promote to 3", this, SLOT(promoteTo3()))->setDisabled(false);
-    menu.addAction("Promote to 4", this, SLOT(promoteTo4()))->setDisabled(false);
-    menu.addAction("Promote to 5", this, SLOT(promoteTo5()))->setDisabled(false);
-    menu.addAction("Promote to 6", this, SLOT(promoteTo6()))->setDisabled(false);
-    menu.exec(position);
+    if(getPopUpTogle())
+    {
+        QPoint position;
+        position = getMouseGlobalPosition();
+        QMenu * menu = new QMenu();
+        int last = kmean.getK();
+        for(int i = 1; i <= last; i++)
+        {
+            QAction * action = new QAction(QString("Promote to %1").arg(i), menu);
+            action->setProperty("index", i);
+            menu->addAction(action);
+        }
+        if(kmean.getK() < 6)
+        {
+            menu->addAction("Add to new", this, SLOT(AddToNewPromote()));
+        }
+        connect(menu, SIGNAL(triggered(QAction*)), SLOT(triggeredPromote(QAction*)));
+        menu->popup(position);
+    }
 }
 
+/**
+ * This method is used to control pop-up menu for merging
+ * @author Mikayel Egibyan
+ */
+void MainWindow::triggeredMerge(QAction* a)
+{
+    const QVariant indexK(a->property("index"));
+    if (!indexK.isValid())
+        return;
+    const int i = indexK.toInt();
+    GLWidget *widget = this->findChild<GLWidget *>("glwidget");
+    if(getHashOrig().isEmpty())
+        setHashOrig(widget->coordinateT.getHashOriginal());
+    getHashOrig();
+    int cluster = widget->coordinateT.getNumberOfClusterSelectedCentroid();
+    for(int u=0; u<hashOrig["Cluster"].size(); u++)
+    {
+        if(hashOrig["Cluster"].value(u) == cluster)
+            hashOrig["Cluster"].replace(u, i);
+    }
+    setHashOrig(hashOrig);
+    widget->setHashToRender(hashOrig);
+}
+
+/**
+ * This method is used to control the action of adding to a new cluster
+ * @author Mikayel Egibyan
+ */
+void MainWindow::AddToNewPromote()
+{
+    GLWidget *widget = this->findChild<GLWidget *>("glwidget");
+    int a = widget->coordinateT.findNumberOfClusters() + 1;
+    if(widget->coordinateT.getSelectionType() == 1)
+    {
+        if(getHashOrig().isEmpty())
+            setHashOrig(widget->coordinateT.getHashOriginal());
+        getHashOrig();
+        indicesRect = widget->coordinateT.getSelectedPointIndexRect();
+        for(int z=0; z<indicesRect.size(); z++)
+        {
+            hashOrig["Cluster"].replace(indicesRect[z], a);
+        }
+        setHashOrig(hashOrig);
+        widget->setHashToRender(hashOrig);
+    }
+    if(widget->coordinateT.getSelectionType() == 2)
+    {
+        if(getHashOrig().isEmpty())
+            setHashOrig(widget->coordinateT.getHashOriginal());
+        getHashOrig();
+        index = widget->coordinateT.getSelectedPointIndex();
+        hashOrig["Cluster"].replace(index, a);
+        setHashOrig(hashOrig);
+        widget->setHashToRender(hashOrig);
+    }
+    setHashOrig(hashOrig);
+    widget->setHashToRender(hashOrig);
+}
+
+/**
+ * This method is used to control the pop-up menu for promotion
+ * @author Mikayel Egibyan
+ */
+void MainWindow::triggeredPromote(QAction* a)
+{
+    const QVariant indexK(a->property("index"));
+    if (!indexK.isValid())
+        return;
+    const int i = indexK.toInt();
+    GLWidget *widget = this->findChild<GLWidget *>("glwidget");
+    if(widget->coordinateT.getSelectionType() == 1)
+    {
+        if(getHashOrig().isEmpty())
+            setHashOrig(widget->coordinateT.getHashOriginal());
+        getHashOrig();
+        indicesRect = widget->coordinateT.getSelectedPointIndexRect();
+        for(int z=0; z<indicesRect.size(); z++)
+        {
+            hashOrig["Cluster"].replace(indicesRect[z], i);
+        }
+        setHashOrig(hashOrig);
+        widget->setHashToRender(hashOrig);
+
+    }
+    if(widget->coordinateT.getSelectionType() == 2)
+    {
+        if(getHashOrig().isEmpty())
+            setHashOrig(widget->coordinateT.getHashOriginal());
+        getHashOrig();
+        index = widget->coordinateT.getSelectedPointIndex();
+        hashOrig["Cluster"].replace(index, i);
+        setHashOrig(hashOrig);
+        widget->setHashToRender(hashOrig);
+    }
+}
+
+/**
+ * This method is used to set the togle information of pop-up menu for promotion
+ * @author Mikayel Egibyan
+ */
+void MainWindow::setPopUpTogle(bool value)
+{
+    popUpTogle = value;
+}
+
+/**
+ * This method is used to get the togle information of pop-up menu for promotion
+ * @author Mikayel Egibyan
+ */
+bool MainWindow::getPopUpTogle()
+{
+    return popUpTogle;
+}
+
+/**
+ * This method is used to set the togle information of pop-up menu for merging
+ * @author Mikayel Egibyan
+ */
+void MainWindow::setPopUpTogleMerge(bool value)
+{
+    popUpTogleMerge = value;
+}
+
+/**
+ * This method is used to get the togle information of pop-up menu for merging
+ * @author Mikayel Egibyan
+ */
+bool MainWindow::getPopUpTogleMerge()
+{
+    return popUpTogleMerge;
+}
+
+/**
+ * This method is used to get the mouse global coordinates
+ * @author Mikayel Egibyan
+ */
 QPoint MainWindow::getMouseGlobalPosition()
 {
     return mouseGlobalPosition;
 }
 
+/**
+ * This method is used to handle the mouse press event
+ * @author Mikayel Egibyan
+ * @param eventPress
+ */
 void MainWindow::mousePressEvent(QMouseEvent  *eventPress)
 {
     if((eventPress->buttons() & Qt::RightButton))
@@ -321,12 +451,31 @@ void MainWindow::mousePressEvent(QMouseEvent  *eventPress)
         {
             if(widget->coordinateT.getPointAlreadySelected())
             {
+                setPopUpTogle(true);
+                setPopUpTogleMerge(false);
+                mouseGlobalPosition = eventPress->globalPos();
+                createPopUp();
+            }
+            if(widget->coordinateT.getCentroidAlreadySelected())
+            {
+                setPopUpTogle(false);
+                setPopUpTogleMerge(true);
+                mouseGlobalPosition = eventPress->globalPos();
+                createPopUpMerge();
+            }
+        }
+        if(widget->coordinateT.getSelectionType() == 1)
+        {
+            if(widget->coordinateT.getPointsAlreadySelectedRect())
+            {
+                setPopUpTogle(true);
+                setPopUpTogleMerge(false);
                 mouseGlobalPosition = eventPress->globalPos();
                 createPopUp();
             }
         }
     }
-    if((eventPress->button() & Qt::LeftButton))
+    if((eventPress->buttons() & Qt::LeftButton))
     {
         setMouseTracking(true);
         m = true;
@@ -336,13 +485,23 @@ void MainWindow::mousePressEvent(QMouseEvent  *eventPress)
         float y_ = 1.0 - y;
         buttonPressCoordinates.setX(x);
         buttonPressCoordinates.setY(y_);
-        qDebug() << buttonPressCoordinates.x() << buttonPressCoordinates.y();
         widget->setQ(true);
         widget->setPushedX(buttonPressCoordinates.x());
         widget->setPushedY(buttonPressCoordinates.y());
+        widget->setCurrentX(buttonPressCoordinates.x());
+        widget->setCurrentY(buttonPressCoordinates.y());
+        if(widget->coordinateT.getSelectionType() == 0 && getdivisionMode())
+        {
+            determineLinePress(buttonPressCoordinates);
+        }
     }
 }
 
+/**
+ * This method is used to handle the mouse move event
+ * @author Mikayel Egibyan
+ * @param eventPress
+ */
 void MainWindow::mouseMoveEvent(QMouseEvent *eventMove)
 {
     if(eventMove->buttons() & Qt::LeftButton)
@@ -373,29 +532,22 @@ void MainWindow::on_actionExit_triggered()
  */
 void MainWindow::on_hor_axis_dropbox_currentIndexChanged()
 {
-     //QVariant  v(1|32);
-    //ui->hor_axis_dropbox->setItemData(1, v, Qt::UserRole -1);
-   // int t = ui->hor_axis_dropbox->currentIndex();
-    //ui->vert_axis_dropbox->setItemData(ui->hor_axis_dropbox->currentIndex(), 0, Qt::UserRole -1);
-    //if(ui->hor_axis_dropbox->currentIndex()==ui->vert_axis_dropbox->currentIndex())
-      //  ui->vert_axis_dropbox->setItemData(t, v, Qt::UserRole -1);
-
-   /* if(ui->hor_axis_dropbox->currentIndex()==4)
-        itemH->setEnabled(false);*/
-    if(ui->hor_axis_dropbox->currentIndex()== ui->vert_axis_dropbox->currentIndex())
-        QMessageBox::warning(this, "Wrong choise", "Horizontal and vertical axis cannot have the same value. PLease select different values.");
-
     QString label = ui->hor_axis_dropbox->currentText();
     string str = label.toStdString();
     GLWidget *widget = this->findChild<GLWidget *>("glwidget");
     widget->coordinateT.setLabelX(str);
-    //widget->coordinateT.render_text_information();
 }
 
+/**
+ * This method is used to handle the selection combobox index change event
+ * @author Mikayel Egibyan
+ */
 void MainWindow::on_sellection_type_dropbox_currentIndexChanged()
 {
     GLWidget *widget = this->findChild<GLWidget *>("glwidget");
     widget->coordinateT.setSelectionType(ui->sellection_type_dropbox->currentIndex());
+    if(ui->sellection_type_dropbox->currentIndex() != 0)
+        setdivisionMode(false);
 
 }
 
@@ -405,17 +557,10 @@ void MainWindow::on_sellection_type_dropbox_currentIndexChanged()
  */
 void MainWindow::on_vert_axis_dropbox_currentIndexChanged()
 {
-    //model_v = qobject_cast<QStandardItemModel *>(ui->vert_axis_dropbox->model());
-    //item_v = model_v->item(ui->vert_axis_dropbox->currentIndex());
-
-    //if(ui->vert_axis_dropbox->currentIndex()== ui->hor_axis_dropbox->currentIndex())
-      //  QMessageBox::warning(this, "Wrong choise", "!Horizontal and vertical axis cannot have the same value. PLease select different values.");
-
     QString label = ui->vert_axis_dropbox->currentText();
     string str = label.toStdString();
     GLWidget *widget = this->findChild<GLWidget *>("glwidget");
     widget->coordinateT.setLabelY(str);
-   // widget->coordinateT.render_text_information();
 }
 
 /**
@@ -440,12 +585,36 @@ void MainWindow::Load()
     widget->coordinateT.setRenderTogle(true);
     widget->setHashToRender(widget->coordinateT.getHash());
     //widget->coordinateT.readFileOfNotClustereData();
+    if(widget->coordinateT.getFileLoadedStatus())
+    {
+        ui->clust_num_dropbox->setCurrentIndex(widget->coordinateT.findNumberOfClusters()-1);
+        ui->clust_num_dropbox->setDisabled(true);
+        QString label = ui->clust_num_dropbox->currentText();
+        string str = label.toStdString();
+        widget->coordinateT.setLabelCluster(str);
+    }
 }
 
+/**
+ * This method is used to handle the LoadKmeans menu event
+ * @author Mikayel Egibyan
+ */
 void MainWindow::LoadKmeans()
 {
     filename_1 = QFileDialog::getOpenFileName(this, "Load a file");
     kmean.readFileOfNotClustereData(filename_1);
+    GLWidget *widget = this->findChild<GLWidget *>("glwidget");
+    if(kmean.getReadStatus())
+    {
+        ui->step_cpmbo_box->clear();
+        ui->clust_num_dropbox->setDisabled(true);
+        widget->coordinateT.setNumberOfIterations(kmean.getNumberOfIterations());
+        widget->coordinateT.ReadFile("C:\\Qt\\latest test\\build-Prototype-Desktop_Qt_5_1_0_MinGW_32bit-Debug\\debug\\ClusterReferences.csv");
+        widget->coordinateT.setRenderTogle(true);
+        widget->setHashToRender(widget->coordinateT.getHash());
+        for(int l = 1; l <= kmean.getNumberOfIterations(); l++)
+            ui->step_cpmbo_box->addItem(QString::number(l));
+    }
 }
 
 /**
@@ -454,44 +623,165 @@ void MainWindow::LoadKmeans()
  */
 void MainWindow::on_clust_num_dropbox_currentIndexChanged()
 {
-    //QString cluster = ui->clust_num_dropbox->currentText();
-    //string strCluster = cluster.toStdString();
+    kmean.setK(ui->clust_num_dropbox->currentIndex() + 1);
+    QString label = ui->clust_num_dropbox->currentText();
+    string str = label.toStdString();
     GLWidget *widget = this->findChild<GLWidget *>("glwidget");
-    widget->kmean.setK(ui->clust_num_dropbox->currentIndex() + 1);
+    widget->coordinateT.setLabelCluster(str);
 }
 
-
+/**
+ * This method is used to handle the Information menu click event
+ * @author Mikayel Egibyan
+ */
 void MainWindow::on_actionInformation_triggered()
 {
     QMessageBox::about(this, "How to use", "Press '@K-mean the data' to select a '.csv' file which you want to cluster. Press '@Load file' to select a '.csv' file with already clustered data, that you want to visualize.");
 }
 
-
+/**
+ * This method is used to handle the Save value button click event
+ * @author Mikayel Egibyan
+ */
 void MainWindow::on_pushButton_2_pressed()
 {
     GLWidget *widget = this->findChild<GLWidget *>("glwidget");
     widget->coordinateT.getSelectedPoint();
-    /*QFile file("C:\\Qt\\latest test\\build-Prototype-Desktop_Qt_5_1_0_MinGW_32bit-Debug\\debug\\SelectedItems.txt");
-    file.open(QIODevice::WriteOnly | QIODevice::Text);
-    QTextStream out(&file);
-    if(file.isOpen())
-    {
-    }*/
 }
 
+/**
+ * This method is used to get the data to be rendered
+ * @author Mikayel Egibyan
+ */
 void MainWindow::setHashOrig(QHash<QString, QVector<float> > hash)
 {
     hashOrig = hash;
 }
 
+/**
+ * This method is used to set the data to be rendered
+ * @author Mikayel Egibyan
+ */
 QHash<QString, QVector<float> > MainWindow::getHashOrig()
 {
     return hashOrig;
 }
 
+/**
+ * This method is used to handle the Reset button click event
+ * @author Mikayel Egibyan
+ */
 void MainWindow::on_pushButton_3_clicked()
 {
     GLWidget *widget = this->findChild<GLWidget *>("glwidget");
     setHashOrig(widget->coordinateT.getHashOriginal());
     widget->setHashToRender(hashOrig);
+}
+
+/**
+ * This method is used to handle the Save changes menu click event
+ * @author Mikayel Egibyan
+ */
+void MainWindow::on_actionSave_changes_triggered()
+{
+    QFile file("C:\\Qt\\latest test\\build-Prototype-Desktop_Qt_5_1_0_MinGW_32bit-Debug\\debug\\ChangedData.csv");
+    file.open(QIODevice::WriteOnly | QIODevice::Text);
+    QTextStream out(&file);
+    if(file.isOpen())
+    {
+
+        QHash<QString, QVector<float> > changedHash = getHashOrig();
+        int elements = changedHash["Dim_1"].size();
+        int u=0;
+        QHash<QString, QVector<float> >::iterator it;
+        for(it = changedHash.begin(); it != changedHash.end(); it++)
+        {
+            u++;
+        }
+
+        if(getHashOrig().isEmpty())
+            QMessageBox::warning(this, "Warning", "Nothing to save.");
+
+        for(int j = 1; j < u; j++)
+        {
+            out << "Dim_" << j << ",";
+        }
+        out << "Cluster" << '\n';
+
+        for(int d=0; d< elements; d++)
+        {
+            out << changedHash["Dim_1"].at(d) << "," << changedHash["Dim_2"].at(d) << "," << changedHash["Dim_3"].at(d) << "," << changedHash["Dim_4"].at(d) << "," << changedHash["Cluster"].at(d) <<'\n';
+        }
+        file.close();
+    }
+    else
+    {
+        QMessageBox::warning(0, "Error", file.errorString());
+    }
+}
+
+/**
+ * This method is used to handle the radion button to show centroids
+ * @author Mikayel Egibyan
+ */
+void MainWindow::on_radioButton_clicked()
+{
+    GLWidget *widget = this->findChild<GLWidget *>("glwidget");
+    widget->coordinateT.setShowCentroids(true);
+}
+
+/**
+ * This method is used to handle the radion button to hide centroids
+ * @author Mikayel Egibyan
+ */
+void MainWindow::on_radioButton_2_clicked()
+{
+    GLWidget *widget = this->findChild<GLWidget *>("glwidget");
+    widget->coordinateT.setShowCentroids(false);
+}
+
+/**
+ * This method is used to handle the cluster number dropbox togle event
+ * @author Mikayel Egibyan
+ */
+void MainWindow::on_Reset_clicked()
+{
+    GLWidget *widget = this->findChild<GLWidget *>("glwidget");
+    ui->clust_num_dropbox->setDisabled(false);
+}
+
+/**
+ * This method is used to handle the current iteration number value change event
+ * @author Mikayel Egibyan
+ */
+void MainWindow::on_step_cpmbo_box_currentIndexChanged()
+{
+    if(kmean.getReadStatus())
+    {
+        kmean.setmanualIndexChanged(true);
+        kmean.setmanualNumberOfIterations(ui->step_cpmbo_box->currentIndex() + 1);
+        kmean.saveClusterReferencesToFileStepResult();
+    }
+    /*kmean.setReadStatus(false);
+    GLWidget *widget = this->findChild<GLWidget *>("glwidget");
+    kmean.readFileOfNotClustereData(filename_1);
+    if(kmean.getReadStatus())
+    {
+        ui->clust_num_dropbox->setDisabled(true);
+        widget->coordinateT.ReadFile("C:\\Qt\\latest test\\build-Prototype-Desktop_Qt_5_1_0_MinGW_32bit-Debug\\debug\\ClusterReferences.csv");
+        widget->coordinateT.setRenderTogle(true);
+        widget->setHashToRender(widget->coordinateT.getHash());
+    }
+    //widget->coordinateT.setRenderTogle(true);
+    //widget->setHashToRender(stepByStepCluster);*/
+}
+
+/**
+ * This method is used to find to which halfspace does the point belong to
+ * @author Mikayel Egibyan
+ */
+float MainWindow::calculateHalfSpaces(float x, float y, float a, float b, float m, float n)
+{
+    float dist = x * (n-b)/(m-a) - y + b - a*(n-b)*(m-a);
+    return dist;
 }
