@@ -12,9 +12,13 @@
  */
 kmean_algorithm::kmean_algorithm()
 {
+
 }
 
-
+/**
+ * This method is used to sort final results for save
+ * @author Mikayel Egibyan
+ **/
 void kmean_algorithm::sortFinalFile()
 {
     QFile file("C:\\Qt\\latest test\\build-Prototype-Desktop_Qt_5_1_0_MinGW_32bit-Debug\\debug\\ClusterReferences.txt");
@@ -29,46 +33,42 @@ void kmean_algorithm::sortFinalFile()
  **/
 void kmean_algorithm::readFileOfNotClustereData(QString filename)
 {
+    getK();
     QFile file(filename);
     //QFile file("C:\\Qt\\latest test\\build-Prototype-Desktop_Qt_5_1_0_MinGW_32bit-Debug\\debug\\iris.csv");
     if(!file.open(QIODevice::ReadOnly))
     {
         QMessageBox::warning(0, "Error", file.errorString());
     }
-    fileIsRead = true;
-    QString fileLine = file.readLine();
-    QStringList fileLineSplit = fileLine.split(',');
-    hashKeySize = fileLineSplit.size();
-    //qDebug() << hashKeySize;
+    else
+    {
+        fileIsRead = true;
+        QString fileLine = file.readLine();
+        QStringList fileLineSplit = fileLine.split(',');
+        hashKeySize = fileLineSplit.size();
 
-    for(int t=0; t<hashKeySize; t++)
-    {
-        QVector<float> vec;
-        hash_notClustered[t] = vec;
-    }
-    file.close();
-
-    QFile file1(filename);
-    if(!file1.open(QIODevice::ReadOnly))
-    {
-        QMessageBox::warning(0, "Error", file1.errorString());
-    }
-    while(!file1.atEnd())
-    {
-        QString line = file1.readLine();
-        QStringList list = line.split(',');
-        for(int t = 0; t<list.size(); t++)
+        for(int t=0; t<hashKeySize; t++)
         {
-            hash_notClustered[t].push_back(list[t].toFloat());
+            QVector<float> vec;
+            hash_notClustered[t] = vec;
         }
-    }
-    //qDebug() << "hash_notClustered[0].size()" << hash_notClustered[0].size();
-    doKmeans();
-    QHashIterator<int, QVector<float> > i(hash_notClustered);
-    while (i.hasNext())
-    {
-        i.next();
-        qDebug() << i.key() << ":" << i.value();
+        file.close();
+
+        QFile file1(filename);
+        if(!file1.open(QIODevice::ReadOnly))
+        {
+            QMessageBox::warning(0, "Error", file1.errorString());
+        }
+        while(!file1.atEnd())
+        {
+            QString line = file1.readLine();
+            QStringList list = line.split(',');
+            for(int t = 0; t<list.size(); t++)
+            {
+                hash_notClustered[t].push_back(list[t].toFloat());
+            }
+        }
+        doKmeans();
     }
 }
 
@@ -111,10 +111,6 @@ int kmean_algorithm::separatePointsIntoGroups(int point)
                 clusterReferedValue = cluster;
             }
         }
-        /*qDebug()<<"X["<<point<<"]: "<<hash_notClustered[0].value(point);
-        qDebug()<<"Y["<<point<<"]: "<<hash_notClustered[1].value(point);
-        qDebug()<<"Distance to Cluster "<<cluster<<" is: "<<euclideanDistancePointClusterMean;*/
-
     }
     return clusterReferedValue;
 }
@@ -125,18 +121,19 @@ int kmean_algorithm::separatePointsIntoGroups(int point)
  **/
 void kmean_algorithm::saveClusterMeansToFile()
 {
-    QFile file("C:\\Qt\\latest test\\build-Prototype-Desktop_Qt_5_1_0_MinGW_32bit-Debug\\debug\\ClusterMeans.txt");
+    QFile file("C:\\Qt\\latest test\\build-Prototype-Desktop_Qt_5_1_0_MinGW_32bit-Debug\\debug\\ClusterMeans.csv");
     file.open(QIODevice::WriteOnly | QIODevice::Text);
     QTextStream out(&file);
     if(file.isOpen())
     {
+        out << "Dim_1" << "," << "Dim_2" << "," << "Dim_3" << "," <<"Dim_4" << "," <<"Cluster" << '\n';
         for(int i=0; i<numberOfClusters; i++)
         {
             for(int j = 0; j<hashKeySize; j++)
                 {
-                    out << clusterMeanCoordinate[j].at(i)  << '\t';
+                    out << clusterMeanCoordinate[j].at(i)  << ",";
                 }
-            out << '\n';
+            out << i+1 <<'\n';
         }
         file.close();
     }
@@ -156,7 +153,6 @@ void kmean_algorithm::saveClusterReferencesToFile(int a[])
     int m =  hashKeySize;
     QFile file("C:\\Qt\\latest test\\build-Prototype-Desktop_Qt_5_1_0_MinGW_32bit-Debug\\debug\\ClusterReferences.csv");
     file.open(QIODevice::WriteOnly | QIODevice::Text);
-    //QHashIterator<int, QVector<float> > i(hash_notClustered);
     QTextStream out(&file);
     if(file.isOpen())
     {
@@ -178,6 +174,37 @@ void kmean_algorithm::saveClusterReferencesToFile(int a[])
 }
 
 /**
+ * This method is used to save information to which cluster belongs the point into a file step-by-step
+ * @author Mikayel Egibyan
+ **/
+void kmean_algorithm::saveClusterReferencesToFileStepResult()
+{
+    /*int n = numberOfAllOverDataPoints;
+    int m =  hashKeySize;
+    QFile file("C:\\Qt\\latest test\\build-Prototype-Desktop_Qt_5_1_0_MinGW_32bit-Debug\\debug\\ClusterReferencesStepResult.csv");
+    file.open(QIODevice::WriteOnly | QIODevice::Text);
+    QTextStream out(&file);
+    if(file.isOpen())
+    {
+        out << "Dim_1" << "," << "Dim_2" << "," << "Dim_3" << "," <<"Dim_4" << "," <<"Cluster" << '\n';
+        for (int i=0 ; i< n; i++)
+        {
+            for (int j = 0; j<m; j++)
+            {
+                out << stepResult[getmanualNumberOfIterations()-1][j].at(i)<<  ",";
+            }
+            out << referValueStepResult.at(getmanualNumberOfIterations()-1).at(i) + 1 << '\n';
+        }
+        file.close();
+    }
+    else
+    {
+        QMessageBox::warning(0, "Error", file.errorString());
+    }*/
+}
+
+
+/**
  * This method is used to calculate the number of elements in the file
  * @author Mikayel Egibyan
  **/
@@ -187,12 +214,8 @@ int kmean_algorithm::calculateElementsInFile()
     QHash<int, QVector<float> >::iterator it;
     for (it = hash_notClustered.begin(); it != hash_notClustered.end(); ++it)
     {
-        numberOfElements +=  it.value().size();
-        //qDebug() << numberOfElements;
-        //numberOfElements = it.value().size() + numberOfElements;
+        numberOfElements +=  it.value().size();     
     }
-    //qDebug() << "Number of elements in the file is " << numberOfElements;
-    //qDebug() << "Number of data points is " << numberOfElements/2 << '\n';
 }
 
 /**
@@ -222,7 +245,6 @@ void kmean_algorithm::init()
  **/
 void kmean_algorithm::doKmeans()
 {
-    //readFileOfNotClustereData();
     calculateElementsInFile();
     findMinMaxCoordinatesOfDimensions();
     init();
@@ -234,15 +256,15 @@ void kmean_algorithm::doKmeans()
     {
         dimOverAll[q] = 0;
     }
-    it = 0;
+    setNumberOfIterations(0);
     float OverAll = 1;
+
     while(OverAll != 0)
     {
         OverAll = 0;
         for(int i = 0; i < numberOfAllOverDataPoints; i++)
         {
             referCluster[i] = separatePointsIntoGroups(i);
-            //qDebug() << referCluster[i];
         }
         for(int j = 0; j < numberOfClusters; j++)
         {
@@ -250,22 +272,18 @@ void kmean_algorithm::doKmeans()
             {
                 dimOverAll[f] = 0;
             }
-            it = 0;
+            setNumberOfIterations(0);
             for(int t = 0; t < numberOfAllOverDataPoints; t++)
             {
                 if(referCluster[t] == j)
                 {
-                    it++;
+                    setNumberOfIterations(getNumberOfIterations()+1);
                     for(int p = 0; p < hashKeySize; p++)
                     {
                        dimOverAll[p] = hash_notClustered[p].at(t) + dimOverAll[p];
                     }
-                    //qDebug()<<"X["<<t<<"]: "<<hash_notClustered[0].at(t);
-                    //qDebug()<<"Y["<<t<<"]: "<<hash_notClustered[1].at(t);
-                    //qDebug()<<"X: "<<xOverAll;
-                    //qDebug()<<"Y: "<<yOverAll;
                 }
-                if(it == 0)
+                if(getNumberOfIterations() == 0)
                 {
                     QVector<float> Range;
                     for(int y = 0; y < hashKeySize; y++)
@@ -273,12 +291,20 @@ void kmean_algorithm::doKmeans()
                           Range.push_back(maxDim[y] - minDim[y]);
                           clusterMeanCoordinate[y].replace(j, minDim[y] + float(Range[y] * rand() / (RAND_MAX + 1.0)));
                       }
+                    for(int i = 0; i < numberOfAllOverDataPoints; i++)
+                    {
+                        referValueStepResultVec.push_back(referCluster[i]);
+                    }
                 }
-                if(it != 0)
+                if(getNumberOfIterations() != 0)
                 {
                     for(int u = 0; u < hashKeySize; u++)
                     {
-                        clusterMeanCoordinate[u].replace(j, dimOverAll[u] / it);
+                        clusterMeanCoordinate[u].replace(j, dimOverAll[u] / getNumberOfIterations());
+                    }
+                    for(int i = 0; i < numberOfAllOverDataPoints; i++)
+                    {
+                        referValueStepResultVec.push_back(referCluster[i]);
                     }
                 }
             }
@@ -289,28 +315,132 @@ void kmean_algorithm::doKmeans()
             }
         }
     }
-    qDebug() << "Number of itterations is " << it;
     saveClusterMeansToFile();
     saveClusterReferencesToFile(referCluster);
 }
 
-
+/**
+ * This method is used to set the number of clusters
+ * @author Mikayel Egibyan
+ **/
 void kmean_algorithm::setK(int value)
 {
     numberOfClusters = value;
 }
 
+/**
+ * This method is used to get the number of clusters
+ * @author Mikayel Egibyan
+ **/
 int kmean_algorithm::getK()
 {
     return numberOfClusters;
 }
 
+/**
+ * This method is used to set the read status
+ * @author Mikayel Egibyan
+ **/
+void kmean_algorithm::setReadStatus(bool value)
+{
+    fileIsRead = value;
+}
+
+/**
+ * This method is used to get the read status
+ * @author Mikayel Egibyan
+ **/
 bool kmean_algorithm::getReadStatus()
 {
     return fileIsRead;
 }
 
+/**
+ * This method is used to get the number of iterations
+ * @author Mikayel Egibyan
+ **/
 int kmean_algorithm::getNumberOfIterations()
 {
     return it;
+}
+
+/**
+ * This method is used to set the number of iterations
+ * @author Mikayel Egibyan
+ **/
+void kmean_algorithm::setNumberOfIterations(int value)
+{
+    it = value;
+}
+
+/**
+ * This method is used to get the number of all data points
+ * @author Mikayel Egibyan
+ **/
+int kmean_algorithm::getNumberOfAllOverDataPoints()
+{
+    return numberOfAllOverDataPoints;
+}
+
+/**
+ * This method is used to get the number of header elements in the file
+ * @author Mikayel Egibyan
+ **/
+int kmean_algorithm::getHashKeySize()
+{
+    return hashKeySize;
+}
+
+/**
+ * This method is used to get not clustered data
+ * @author Mikayel Egibyan
+ **/
+QHash<int, QVector<float> > kmean_algorithm::getHashNotClustered()
+{
+    return hash_notClustered;
+}
+
+/**
+ * This method is used to set not clustered data
+ * @author Mikayel Egibyan
+ **/
+void kmean_algorithm::setHashNotClustered(QHash<int, QVector<float> > hash)
+{
+    hash_notClustered = hash;
+}
+
+/**
+ * This method is used to get the manually changed number of iterations
+ * @author Mikayel Egibyan
+ **/
+int kmean_algorithm::getmanualNumberOfIterations()
+{
+    return manualNumberOfIterations;
+}
+
+/**
+ * This method is used to set the manually changed number of iterations
+ * @author Mikayel Egibyan
+ **/
+void kmean_algorithm::setmanualNumberOfIterations(int value)
+{
+    manualNumberOfIterations = value;
+}
+
+/**
+ * This method is used to get the manually changed index
+ * @author Mikayel Egibyan
+ **/
+bool kmean_algorithm::getmanualIndexChanged()
+{
+    return manualIndexChanged;
+}
+
+/**
+ * This method is used to set the manually changed index
+ * @author Mikayel Egibyan
+ **/
+void kmean_algorithm::setmanualIndexChanged(bool value)
+{
+    manualIndexChanged = value;
 }
