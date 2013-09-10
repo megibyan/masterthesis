@@ -73,7 +73,10 @@ void MainWindow::mouseReleaseEvent(QMouseEvent *releaseEvent)
 {
     if(releaseEvent->button() & Qt::LeftButton)
     {
-        setMouseTracking(false);
+        rightButtonPressed = false;
+        leftButtonReleased = true;
+        leftButtonPressed = false;
+        //setMouseTracking(false);
         m = false;
         GLWidget *widget = this->findChild<GLWidget *>("glwidget");
         float x = widget->getNormalizedWidth(widget->mapFromGlobal(QCursor::pos()).x());
@@ -124,7 +127,7 @@ void MainWindow::determineLinePress(QPointF press)
 {
     lineBegin.setX(press.x());
     lineBegin.setY(press.y());
-    qDebug() << lineBegin.x() << lineBegin.y();
+    //qDebug() << lineBegin.x() << lineBegin.y();
 }
 
 /**
@@ -135,7 +138,7 @@ void MainWindow::determineLineRelease(QPointF release)
 {
     lineEnd.setX(release.x());
     lineEnd.setY(release.y());
-    qDebug() << lineEnd.x() << lineEnd.y();
+    //qDebug() << lineEnd.x() << lineEnd.y();
 }
 
 /**
@@ -145,32 +148,22 @@ void MainWindow::determineLineRelease(QPointF release)
 void MainWindow::determineLine()
 {
     GLWidget *widget = this->findChild<GLWidget *>("glwidget");
-    qDebug() << calculateHalfSpaces(hashOrig["Dim_1"].value(1), hashOrig["Dim_2"].value(1), getLinePress().x(), getLinePress().y(), getLineRelease().x(), getLineRelease().y());
-    /*string horValue = "Dim_" +
-    string vertValue = "Dim_" + y->getValue();
-    QString horV = QString::fromStdString(horValue);
-    QString vertV = QString::fromStdString(vertValue);
-    QHash<QString, QVector<float> >::iterator it;
-    QPointF press = getLinePress();
-    QPointF release = getLineRelease();
-    qDebug() << press.x() << press.y();
-    qDebug() << release.x() << release.y();*/
-    /*if(getHashOrig().isEmpty())
-        setHashOrig(widget->coordinateT.getHashOriginal());
-    getHashOrig();
-    int cluster = widget->coordinateT.getNumberOfClusterSelectedCentroid();
-    int a = widget->coordinateT.findNumberOfClusters() + 1;
-    for(int u=0; u<hashOrig["Cluster"].size(); u++)
-        {
-            if(hashOrig["Cluster"].value(u) == cluster)
-            {
-                if(calculateHalfSpaces(hashOrig["Dim_1"].value(u), hashOrig["Dim_2"].value(u), press.x(), press.y(), release.x(),release.y()) < 0)
-                        qDebug() << "Less";
-            }
-        }
-    setHashOrig(hashOrig);
-    widget->setHashToRender(hashOrig);*/
+    if(getdivisionMode())
+    {
+        setMouseTracking(true);
+        if(getHashOrig().isEmpty())
+            setHashOrig(widget->coordinateT.getHashOriginal());
+        getHashOrig();
+        int a = widget->coordinateT.findNumberOfClusters() + 1;
+        int cluster = widget->coordinateT.getNumberOfClusterSelectedCentroid();
+        widget->coordinateT.distFromLine(hashOrig, cluster, a);
+        setHashOrig(hashOrig);
+        widget->setHashToRender(hashOrig);
+        setHashOrig(hashOrig);
+        setMouseTracking(false);
+    }
 }
+
 
 /**
  * This method is used to get the line's start point
@@ -216,57 +209,11 @@ void MainWindow::divideCluster()
 {
     GLWidget *widget = this->findChild<GLWidget *>("glwidget");
     ui->sellection_type_dropbox->setCurrentIndex(0);
-    int cluster = widget->coordinateT.getNumberOfClusterSelectedCentroid();
-
     if(widget->coordinateT.getSelectionType() == 0)
     {
         qDebug() << true;
         setdivisionMode(true);
-        determineLine();
     }
-    /*if(widget->coordinateT.getSelectionType() == 0)
-    {
-        if(getHashOrig().isEmpty())
-            setHashOrig(widget->coordinateT.getHashOriginal());
-        getHashOrig();
-
-
-        //qDebug() << "End X" << widget->getReleasedX() << '\t'<< "End Y" << widget->getReleasedX() << '\n';
-
-        //setMouseTracking(true);
-        //qDebug() << "Begin X" << buttonPressCoordinates.x() << '\t'<< "Begin Y" << buttonPressCoordinates.x() << '\n';
-        //qDebug() << "End X" << buttonReleaseCoordinates.x() << '\t'<< "End Y" << buttonReleaseCoordinates.x() << '\n';
-
-        if(widget->coordinateT.getlineIsDrawn())
-        {
-            qDebug() << "true";
-        }
-        if(!widget->coordinateT.getlineIsDrawn())
-        {
-            qDebug() << "false";
-        }
-
-          //      setMouseTracking(true);
-            /*
-            //float r = calculateHalfSpaces(hashOrig["Dim_1"].at(0), hashOrig["Dim_2"].at(0));
-            //qDebug() << r;*/
-
-        /*
-        {
-         for(int u=0; u<hashOrig["Cluster"].size(); u++)
-         {
-            if(hashOrig["Cluster"].value(u) == cluster)
-            {
-
-                if(r < 0)
-                {
-                    hashOrig["Cluster"].replace(u, a);
-                }
-            }
-         }
-        }*/
-        //setHashOrig(hashOrig);
-        //widget->setHashToRender(hashOrig);
 }
 
 /**
@@ -318,6 +265,10 @@ void MainWindow::triggeredMerge(QAction* a)
     }
     setHashOrig(hashOrig);
     widget->setHashToRender(hashOrig);
+    generateNewCentroids(hashOrig);
+    widget->coordinateT.storeNewClusterCentroids();
+    widget->coordinateT.setNewCentroidsCreated(true);
+    widget->coordinateT.setChangedData(getHashOrig());
 }
 
 /**
@@ -340,6 +291,10 @@ void MainWindow::AddToNewPromote()
         }
         setHashOrig(hashOrig);
         widget->setHashToRender(hashOrig);
+        generateNewCentroids(hashOrig);
+        widget->coordinateT.storeNewClusterCentroids();
+        widget->coordinateT.setNewCentroidsCreated(true);
+        widget->coordinateT.setChangedData(getHashOrig());
     }
     if(widget->coordinateT.getSelectionType() == 2)
     {
@@ -350,10 +305,79 @@ void MainWindow::AddToNewPromote()
         hashOrig["Cluster"].replace(index, a);
         setHashOrig(hashOrig);
         widget->setHashToRender(hashOrig);
+        generateNewCentroids(hashOrig);
+        widget->coordinateT.storeNewClusterCentroids();
+        widget->coordinateT.setNewCentroidsCreated(true);
+        //widget->coordinateT.setChangedData(getHashOrig());
     }
     setHashOrig(hashOrig);
     widget->setHashToRender(hashOrig);
 }
+
+/**
+ * This method is used to generate new centroids after each change in data
+ * @author Mikayel Egibyan
+ */
+void MainWindow::generateNewCentroids(QHash<QString, QVector<float> > hash)
+{
+    GLWidget *widget = this->findChild<GLWidget *>("glwidget");
+    int K = widget->coordinateT.getMax(hash["Cluster"]);
+    float Dim1[K];
+    float Dim2[K];
+    float Dim3[K];
+    float Dim4[K];
+    float centroidD1[K];
+    float centroidD2[K];
+    float centroidD3[K];
+    float centroidD4[K];
+
+    int counter[K];
+    for(int i = 0; i < K ; i++)
+    {
+        Dim1[i] = 0;
+        Dim2[i] = 0;
+        Dim3[i] = 0;
+        Dim4[i] = 0;
+        counter[i] = 0;
+        for(int j = 0; j < hash["Cluster"].size(); j++)
+        {
+            if(hash["Cluster"].value(j) == i+1)
+            {
+                Dim1[i] += hash["Dim_1"].value(j);
+                Dim2[i] += hash["Dim_2"].value(j);
+                Dim3[i] += hash["Dim_3"].value(j);
+                Dim4[i] += hash["Dim_4"].value(j);
+                counter[i]++;
+            }
+        }
+    }
+
+    for(int l = 0; l < K; l++)
+    {
+        centroidD1[l] = Dim1[l] / counter[l];
+        centroidD2[l] = Dim2[l] / counter[l];
+        centroidD3[l] = Dim3[l] / counter[l];
+        centroidD4[l] = Dim4[l] / counter[l];
+    }
+
+    QFile file("C:\\Qt\\latest test\\build-Prototype-Desktop_Qt_5_1_0_MinGW_32bit-Debug\\debug\\NewClusters.csv");
+    file.open(QIODevice::WriteOnly | QIODevice::Text);
+    QTextStream out(&file);
+    if(file.isOpen())
+    {
+        out << "Dim_1" << "," << "Dim_2" << "," << "Dim_3" << "," <<"Dim_4" << "," <<"Cluster" << '\n';
+        for(int n = 0; n < K; n++)
+        {
+            out << centroidD1[n] << "," << centroidD2[n] << "," << centroidD3[n] << "," << centroidD4[n] << "," << n+1 << '\n';
+        }
+    }
+    else
+    {
+        QMessageBox::warning(0, "Error", file.errorString());
+    }
+}
+
+
 
 /**
  * This method is used to control the pop-up menu for promotion
@@ -378,7 +402,10 @@ void MainWindow::triggeredPromote(QAction* a)
         }
         setHashOrig(hashOrig);
         widget->setHashToRender(hashOrig);
-
+        generateNewCentroids(hashOrig);
+        widget->coordinateT.storeNewClusterCentroids();
+        widget->coordinateT.setNewCentroidsCreated(true);
+        widget->coordinateT.setChangedData(getHashOrig());
     }
     if(widget->coordinateT.getSelectionType() == 2)
     {
@@ -389,6 +416,10 @@ void MainWindow::triggeredPromote(QAction* a)
         hashOrig["Cluster"].replace(index, i);
         setHashOrig(hashOrig);
         widget->setHashToRender(hashOrig);
+        generateNewCentroids(hashOrig);
+        widget->coordinateT.storeNewClusterCentroids();
+        widget->coordinateT.setNewCentroidsCreated(true);
+        widget->coordinateT.setChangedData(getHashOrig());
     }
 }
 
@@ -446,6 +477,9 @@ void MainWindow::mousePressEvent(QMouseEvent  *eventPress)
 {
     if((eventPress->buttons() & Qt::RightButton))
     {
+        rightButtonPressed = true;
+        leftButtonReleased = false;
+        leftButtonPressed = false;
         GLWidget *widget = this->findChild<GLWidget *>("glwidget");
         if(widget->coordinateT.getSelectionType() == 2)
         {
@@ -477,6 +511,9 @@ void MainWindow::mousePressEvent(QMouseEvent  *eventPress)
     }
     if((eventPress->buttons() & Qt::LeftButton))
     {
+        rightButtonPressed = false;
+        leftButtonReleased = false;
+        leftButtonPressed = true;
         setMouseTracking(true);
         m = true;
         GLWidget *widget = this->findChild<GLWidget *>("glwidget");
@@ -504,7 +541,7 @@ void MainWindow::mousePressEvent(QMouseEvent  *eventPress)
  */
 void MainWindow::mouseMoveEvent(QMouseEvent *eventMove)
 {
-    if(eventMove->buttons() & Qt::LeftButton)
+    if((eventMove->buttons() & Qt::LeftButton))
     {
         GLWidget *widget = this->findChild<GLWidget *>("glwidget");
         float x = widget->getNormalizedWidth(widget->mapFromGlobal(QCursor::pos()).x());
@@ -514,6 +551,11 @@ void MainWindow::mouseMoveEvent(QMouseEvent *eventMove)
         mouseCurrentPosition.setY(y_);
         widget->setCurrentX(mouseCurrentPosition.x());
         widget->setCurrentY(mouseCurrentPosition.y());
+        determineLine();
+        if(leftButtonPressed && !leftButtonReleased)
+            determineLine();
+        //if(widget->coordinateT.getlineIsDrawn() && getdivisionMode())
+            //determineLine();
     }
 }
 
@@ -606,14 +648,11 @@ void MainWindow::LoadKmeans()
     GLWidget *widget = this->findChild<GLWidget *>("glwidget");
     if(kmean.getReadStatus())
     {
-        ui->step_cpmbo_box->clear();
         ui->clust_num_dropbox->setDisabled(true);
         widget->coordinateT.setNumberOfIterations(kmean.getNumberOfIterations());
         widget->coordinateT.ReadFile("C:\\Qt\\latest test\\build-Prototype-Desktop_Qt_5_1_0_MinGW_32bit-Debug\\debug\\ClusterReferences.csv");
         widget->coordinateT.setRenderTogle(true);
         widget->setHashToRender(widget->coordinateT.getHash());
-        for(int l = 1; l <= kmean.getNumberOfIterations(); l++)
-            ui->step_cpmbo_box->addItem(QString::number(l));
     }
 }
 
@@ -676,6 +715,7 @@ void MainWindow::on_pushButton_3_clicked()
     GLWidget *widget = this->findChild<GLWidget *>("glwidget");
     setHashOrig(widget->coordinateT.getHashOriginal());
     widget->setHashToRender(hashOrig);
+    widget->coordinateT.setNewCentroidsCreated(false);
 }
 
 /**
@@ -750,38 +790,4 @@ void MainWindow::on_Reset_clicked()
     ui->clust_num_dropbox->setDisabled(false);
 }
 
-/**
- * This method is used to handle the current iteration number value change event
- * @author Mikayel Egibyan
- */
-void MainWindow::on_step_cpmbo_box_currentIndexChanged()
-{
-    if(kmean.getReadStatus())
-    {
-        kmean.setmanualIndexChanged(true);
-        kmean.setmanualNumberOfIterations(ui->step_cpmbo_box->currentIndex() + 1);
-        kmean.saveClusterReferencesToFileStepResult();
-    }
-    /*kmean.setReadStatus(false);
-    GLWidget *widget = this->findChild<GLWidget *>("glwidget");
-    kmean.readFileOfNotClustereData(filename_1);
-    if(kmean.getReadStatus())
-    {
-        ui->clust_num_dropbox->setDisabled(true);
-        widget->coordinateT.ReadFile("C:\\Qt\\latest test\\build-Prototype-Desktop_Qt_5_1_0_MinGW_32bit-Debug\\debug\\ClusterReferences.csv");
-        widget->coordinateT.setRenderTogle(true);
-        widget->setHashToRender(widget->coordinateT.getHash());
-    }
-    //widget->coordinateT.setRenderTogle(true);
-    //widget->setHashToRender(stepByStepCluster);*/
-}
 
-/**
- * This method is used to find to which halfspace does the point belong to
- * @author Mikayel Egibyan
- */
-float MainWindow::calculateHalfSpaces(float x, float y, float a, float b, float m, float n)
-{
-    float dist = x * (n-b)/(m-a) - y + b - a*(n-b)*(m-a);
-    return dist;
-}
