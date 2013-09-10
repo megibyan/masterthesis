@@ -119,12 +119,30 @@ bool Coordinate::getCentroidAlreadySelected()
 }
 
 /**
+* This method is used to get true if a new centroid is selected
+* @author Mikayel Egibyan
+*/
+bool Coordinate::getNewCentroidAlreadySelected()
+{
+    return newcentroidAlreadySelected;
+}
+
+/**
 * This method is used to set true if a centroid is selected
 * @author Mikayel Egibyan
 */
 void Coordinate::setCentroidAlreadySelected(bool value)
 {
     centroidAlreadySelected = value;
+}
+
+/**
+* This method is used to set true if a new centroid is selected
+* @author Mikayel Egibyan
+*/
+void Coordinate::setNewCentroidAlreadySelected(bool value)
+{
+    newcentroidAlreadySelected = value;
 }
 
 /**
@@ -146,11 +164,42 @@ void Coordinate::setPointsAlreadySelectedRect(bool value)
 }
 
 /**
+ * This method is used to find to which halfspace does the point belong to
+ * @author Mikayel Egibyan
+ */
+float Coordinate::calculateHalfSpaces(float x, float y, float a, float b, float m, float n)
+{
+    return (x * (n-b)/(m-a) - y + b - a*(n-b)*(m-a));
+}
+
+void Coordinate::distFromLine(QHash<QString, QVector<float> > a, int cluster, int z)
+{
+    string horValue = "Dim_" + x->getValue();
+    string vertValue = "Dim_" + y->getValue();
+    QString horV = QString::fromStdString(horValue);
+    QString vertV = QString::fromStdString(vertValue);
+    float r = getlineBeginX();
+    float b = getlineBeginY();
+    float m = getlineEndX();
+    float n = getlineEndY();
+qDebug() << getlineBeginX() << getlineBeginY() << getlineEndX() << getlineEndY();
+
+    for(int i=0; i<a["Cluster"].size(); i++)
+    {
+        if(a["Cluster"].value(i) == cluster)
+        {
+            if(calculateHalfSpaces(a[horV].value(i), a[vertV].value(i), r, b, m, n) < 0)
+                a["Cluster"].replace(i, z);
+        }
+    }
+}
+
+/**
 * This method is used to render line, rectangle and point
 * @author Mikayel Egibyan
 * @param a,b - scale parameters, t - render or not, pushed* - mouse click position, current* - mouse current position
 */
-void Coordinate::render_rect(int a, int b, bool t, float pushedX, float pushedY, float currentX, float currentY)
+void Coordinate::render_rect(int a, int b, bool t, float pushedX, float pushedY, float currentX, float currentY, float releaseX, float releaseY)
 {
     string horValue = "Dim_" + x->getValue();
     string vertValue = "Dim_" + y->getValue();
@@ -192,11 +241,13 @@ void Coordinate::render_rect(int a, int b, bool t, float pushedX, float pushedY,
             glFlush();
             glDisable(GL_BLEND);
             glPopMatrix();
+            setlineIsDrawn(true);
             setlineBeginX(pushedX);
             setlineBeginY(pushedY);
             setlineEndX(currentX);
             setlineEndY(currentY);
-            setlineIsDrawn(true);
+            //setlineEndX(releaseX);
+            //setlineEndY(releaseY);
         }
     }
     if(selectionType == 2)
@@ -431,6 +482,106 @@ void Coordinate::selectCentroid(int a, int b, float pushedX, float pushedY)
 }
 
 /**
+* This method is used to celecta new centroid
+* @author Mikayel Egibyan
+* @param a,b - scale parameters, pushed* - mouse click position
+*/
+void Coordinate::selectNewCentroid(int a, int b, float pushedX, float pushedY)
+{
+    string horValue = "Dim_" + x->getValue();
+    string vertValue = "Dim_" + y->getValue();
+    QString horV = QString::fromStdString(horValue);
+    QString vertV = QString::fromStdString(vertValue);
+    QHash<QString, QVector<float> >::iterator it;
+    QHash<QString, QVector<float> >::iterator itt;
+    if(q)
+    {
+        if(selectionType == 2)
+        {
+            float epsilion = 0.01;
+            glPushMatrix();
+            glEnable(GL_BLEND);
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            glPointSize(10);
+            glColor4f(1, 0, 0, 0.1);
+            glScalef(a, b, 0);
+            glBegin(GL_POINTS);
+            for (it = newCentroids.begin(); it != newCentroids.end(); it++)
+            {
+                for (int j=0; j<it.value().size(); j++)
+                {
+                    if(newCentroids[horV].value(j) >= pushedX && newCentroids[vertV].value(j) >=pushedY)
+                    {
+                        if(newCentroids[horV].value(j) <= pushedX + epsilion  && newCentroids[vertV].value(j) <=pushedY + epsilion)
+                        {
+                            glVertex2f(newCentroids[horV].value(j), newCentroids[vertV].value(j));
+                            setSelectedCentroidIndex(j);
+                            setSelectedPointXOriginal();
+                            setSelectedPointYOriginal();
+                            setSelectedPointX();
+                            setSelectedPointY();
+                            setCentroidAlreadySelected(true);
+                            setPointAlreadySelected(false);
+                            setPointsAlreadySelectedRect(false);
+                            clusterNumber = int(newCentroids["Cluster"].value(j));
+                            QHash<QString, QVector<float> > changedHash = getChangedData();
+                            for(itt = changedHash.begin(); itt != changedHash.end(); itt++)
+                            {
+                                for (int r=0; r<itt.value().size(); r++)
+                                {
+                                    if(changedHash["Cluster"].value(r) == clusterNumber)
+                                    {
+                                        glBegin(GL_POINTS);
+                                        glVertex2f(changedHash[horV].value(r), changedHash[vertV].value(r));
+                                        glEnd();
+                                    }
+                                }
+                            }
+                            glEnd();
+                        }
+                    }
+                    if(newCentroids[horV].value(j) <= pushedX && newCentroids[vertV].value(j) <=pushedY)
+                    {
+                        if(newCentroids[horV].value(j) >= pushedX + epsilion  && newCentroids[vertV].value(j) >=pushedY + epsilion)
+                        {
+                            glVertex2f(newCentroids[horV].value(j), newCentroids[vertV].value(j));
+                            setSelectedCentroidIndex(j);
+                            setSelectedPointXOriginal();
+                            setSelectedPointYOriginal();
+                            setSelectedPointX();
+                            setSelectedPointY();
+                            setCentroidAlreadySelected(true);
+                            setPointAlreadySelected(false);
+                            setPointsAlreadySelectedRect(false);
+                            clusterNumber = int(newCentroids["Cluster"].value(j));
+                            QHash<QString, QVector<float> > changedHash = getChangedData();
+                            for(itt = changedHash.begin(); itt != changedHash.end(); itt++)
+                            {
+                                for (int r=0; r<itt.value().size(); r++)
+                                {
+                                    if(changedHash["Cluster"].value(r) == clusterNumber)
+                                    {
+                                        glBegin(GL_POINTS);
+                                        glVertex2f(changedHash[horV].value(r), changedHash[vertV].value(r));
+                                        glEnd();
+                                    }
+                                }
+                            }
+                            glEnd();
+                        }
+                    }
+                }
+            }
+
+            glEnd();
+            glFlush();
+            glDisable(GL_BLEND);
+            glPopMatrix();
+        }
+    }
+}
+
+/**
 * This method is used to find the number of clusters from the file
 * @author Mikayel Egibyan
 */
@@ -622,6 +773,193 @@ void Coordinate::selectPoints(int a, int b, float pushedX, float pushedY, float 
             glEnd();
             glFlush();
             glDisable(GL_BLEND);
+            glPopMatrix();
+        }
+    }
+}
+
+/**
+* This method is used to set manually changed data
+* @author Mikayel Egibyan
+*/
+QHash<QString, QVector<float> > Coordinate::getChangedData()
+{
+    return changedData;
+}
+
+/**
+* This method is used to get manually changed data
+* @author Mikayel Egibyan
+*/
+void Coordinate::setChangedData(QHash<QString, QVector<float> > value)
+{
+    changedData = value;
+}
+
+/**
+* This method is used to set if new centroids are generated
+* @author Mikayel Egibyan
+*/
+void Coordinate::setNewCentroidsCreated(bool value)
+{
+    newCentroidsConstructed = value;
+}
+
+/**
+* This method is used to get if new centroids are generated
+* @author Mikayel Egibyan
+*/
+bool Coordinate::getNewCentroidsCreated()
+{
+    return newCentroidsConstructed;
+}
+
+/**
+* This method is used to visualize the new centroids
+* @author Mikayel Egibyan
+* @param a,b - scale parameters
+*/
+void Coordinate::render_newCentroids(int a, int b)
+{
+    if(getShowCentroids())
+    {
+        if(getNewCentroidsCreated())
+        {
+            string horValue = "Dim_" + x->getValue();
+            string vertValue = "Dim_" + y->getValue();
+            QString horV = QString::fromStdString(horValue);
+            QString vertV = QString::fromStdString(vertValue);
+            QHash<QString, QVector<float> >::iterator it;
+
+            glPushMatrix();
+            glPointSize(7);
+            glScalef(a, b, 0);
+
+            for (it = newCentroids.begin(); it != newCentroids.end(); ++it)
+            {
+                for (int j=0; j<it.value().size(); j++)
+                {
+                    if(newCentroids["Cluster"].value(j) == 1)
+                    {
+                        glColor3f(0.2, 0.2, 0.2);
+                        glBegin(GL_POINTS);
+                        glVertex2f(newCentroids[horV].value(j), newCentroids[vertV].value(j));
+                        glEnd();
+
+                        stringstream ss;
+                        ss << newCentroids["Cluster"].value(j);
+                        string str = ss.str();
+                        const char *clusterLabel = str.c_str();
+
+                        string delimiter = "new";
+                        const char * delimiterChar = delimiter.c_str();
+
+                        glRasterPos2f(newCentroids[horV].value(j), newCentroids[vertV].value(j) - 0.02);
+                        glutBitmapString(GLUT_BITMAP_HELVETICA_10, (const unsigned char *) clusterLabel);
+                        glRasterPos2f(newCentroids[horV].value(j), newCentroids[vertV].value(j) + 0.01);
+                        glutBitmapString(GLUT_BITMAP_HELVETICA_10, (const unsigned char *) delimiterChar);
+                    }
+                    if(newCentroids["Cluster"].value(j) == 2)
+                    {
+
+                        glColor3f(0.5, 0.5, 0.5);
+                        glBegin(GL_POINTS);
+                        glVertex2f(newCentroids[horV].value(j), newCentroids[vertV].value(j));
+                        glEnd();
+                        stringstream ss;
+                        ss << newCentroids["Cluster"].value(j);
+                        string str = ss.str();
+                        const char *clusterLabel = str.c_str();
+
+                        string delimiter = "new";
+                        const char * delimiterChar = delimiter.c_str();
+
+                        glRasterPos2f(newCentroids[horV].value(j), newCentroids[vertV].value(j) - 0.02);
+                        glutBitmapString(GLUT_BITMAP_HELVETICA_10, (const unsigned char *) clusterLabel);
+                        glRasterPos2f(newCentroids[horV].value(j), newCentroids[vertV].value(j) + 0.01);
+                        glutBitmapString(GLUT_BITMAP_HELVETICA_10, (const unsigned char *) delimiterChar);
+                    }
+                    if(centroids["Cluster"].value(j) == 3)
+                    {
+                        glColor3f(0.8, 0.8, 0.8);
+                        glBegin(GL_POINTS);
+                        glVertex2f(newCentroids[horV].value(j), newCentroids[vertV].value(j));
+                        glEnd();
+                        stringstream ss;
+                        ss << newCentroids["Cluster"].value(j);
+                        string str = ss.str();
+                        const char *clusterLabel = str.c_str();
+
+                        string delimiter = "new";
+                        const char * delimiterChar = delimiter.c_str();
+
+                        glRasterPos2f(newCentroids[horV].value(j), newCentroids[vertV].value(j) - 0.02);
+                        glutBitmapString(GLUT_BITMAP_HELVETICA_10, (const unsigned char *) clusterLabel);
+                        glRasterPos2f(newCentroids[horV].value(j), newCentroids[vertV].value(j) + 0.01);
+                        glutBitmapString(GLUT_BITMAP_HELVETICA_10, (const unsigned char *) delimiterChar);
+                    }
+                    if(newCentroids["Cluster"].value(j) == 4)
+                    {
+                        glColor3f(0.3, 0.3, 0.3);
+                        glBegin(GL_POINTS);
+                        glVertex2f(newCentroids[horV].value(j), newCentroids[vertV].value(j));
+                        glEnd();
+                        stringstream ss;
+                        ss << newCentroids["Cluster"].value(j);
+                        string str = ss.str();
+                        const char *clusterLabel = str.c_str();
+
+                        string delimiter = "new";
+                        const char * delimiterChar = delimiter.c_str();
+
+                        glRasterPos2f(newCentroids[horV].value(j), newCentroids[vertV].value(j) - 0.02);
+                        glutBitmapString(GLUT_BITMAP_HELVETICA_10, (const unsigned char *) clusterLabel);
+                        glRasterPos2f(newCentroids[horV].value(j), newCentroids[vertV].value(j) + 0.01);
+                        glutBitmapString(GLUT_BITMAP_HELVETICA_10, (const unsigned char *) delimiterChar);
+                    }
+                    if(newCentroids["Cluster"].value(j) == 5)
+                    {
+                        glColor3f(0.6, 0.6, 0.6);
+                        glBegin(GL_POINTS);
+                        glVertex2f(newCentroids[horV].value(j), newCentroids[vertV].value(j));
+                        glEnd();
+                        stringstream ss;
+                        ss << newCentroids["Cluster"].value(j);
+                        string str = ss.str();
+                        const char *clusterLabel = str.c_str();
+
+                        string delimiter = "new";
+                        const char * delimiterChar = delimiter.c_str();
+
+                        glRasterPos2f(newCentroids[horV].value(j), newCentroids[vertV].value(j) - 0.02);
+                        glutBitmapString(GLUT_BITMAP_HELVETICA_10, (const unsigned char *) clusterLabel);
+                        glRasterPos2f(newCentroids[horV].value(j), newCentroids[vertV].value(j) + 0.01);
+                        glutBitmapString(GLUT_BITMAP_HELVETICA_10, (const unsigned char *) delimiterChar);
+                    }
+                    if(centroids["Cluster"].value(j) == 6)
+                    {
+                        glColor3f(0.7, 0.7, 0.7);
+                        glBegin(GL_POINTS);
+                        glVertex2f(newCentroids[horV].value(j), newCentroids[vertV].value(j));
+                        glEnd();
+                        stringstream ss;
+                        ss << newCentroids["Cluster"].value(j);
+                        string str = ss.str();
+                        const char *clusterLabel = str.c_str();
+
+                        string delimiter = "new";
+                        const char * delimiterChar = delimiter.c_str();
+
+                        glRasterPos2f(newCentroids[horV].value(j), newCentroids[vertV].value(j) - 0.02);
+                        glutBitmapString(GLUT_BITMAP_HELVETICA_10, (const unsigned char *) clusterLabel);
+                        glRasterPos2f(newCentroids[horV].value(j), newCentroids[vertV].value(j) + 0.01);
+                        glutBitmapString(GLUT_BITMAP_HELVETICA_10, (const unsigned char *) delimiterChar);
+                    }
+                }
+            }
+
+            glEnd();
+            glFlush();
             glPopMatrix();
         }
     }
@@ -1006,6 +1344,59 @@ void Coordinate::ReadFile(QString filename)
 }
 
 /**
+ * This method is used to read already clustered data new centroids from a .csv file
+ * @author Mikayel Egibyan
+ **/
+void Coordinate::storeNewClusterCentroids()
+{
+    QFile file("C:\\Qt\\latest test\\build-Prototype-Desktop_Qt_5_1_0_MinGW_32bit-Debug\\debug\\NewClusters.csv");
+    if(!file.open(QIODevice::ReadOnly))
+    {
+        QMessageBox::warning(0, "Error", "No file with clusers' mean information found.");
+    }
+    QString headerLineCentroid = file.readLine().trimmed();
+    QStringList headerListCentroid = headerLineCentroid.split(',');
+    int listSizeCenroid = headerListCentroid.size();
+    for(int t=0; t<listSizeCenroid; t++)
+    {
+        QVector<float> vec;
+        newCentroids[headerListCentroid[t]] = vec;
+    }
+    while(!file.atEnd())
+    {
+        QString lineCentroid = file.readLine();
+        QStringList listCentroid = lineCentroid.split(',');
+        for(int j=0; j<listSizeCenroid; j++)
+        {
+            newCentroids[headerListCentroid[j]].push_back(listCentroid[j].toFloat());
+        }
+    }
+    newCentroidsOriginal = newCentroids;
+    float new_value;
+    float old_value;
+    string header_name_string = "Cluster";
+    const char *header_name_constChar = header_name_string.c_str();
+    float min = getMinHash(hashOriginal);
+    float max = getMaxHash(hashOriginal);
+    float a = maxCoordinate->getValue();
+    float b = minCoordinate->getValue();
+    QHash<QString, QVector<float> >::iterator it;
+    for (it = newCentroids.begin(); it != newCentroids.end(); it++)
+    {
+        if (it.key() != header_name_constChar)
+       {
+          for (int j=0; j<it.value().size(); j++)
+          {
+             old_value = it.value().at(j);
+             new_value = (old_value-min)/(max-min)*(a-b) + b;
+             it.value().replace(j, new_value);
+          }
+       }
+    }
+    setNewCentroidsLoaded(true);
+}
+
+/**
  * This method is used to read already clustered data centroids from a .csv file
  * @author Mikayel Egibyan
  **/
@@ -1348,6 +1739,7 @@ void Coordinate::renderLabelForPoint(int a, int b, float x, float y, float xOrig
         glPushMatrix();
         glColor3f(1, 0, 1);
         glScalef(a, b, 0);
+
         stringstream ss (stringstream::in | stringstream::out);
         ss << xOrig;
         string xChar = ss.str();
@@ -1359,12 +1751,15 @@ void Coordinate::renderLabelForPoint(int a, int b, float x, float y, float xOrig
         string delimiter = " / ";
 
         glRasterPos2f(x - 0.015, y + 0.015);
+
         const char * labelX = xChar.c_str();
         const char * labelY = yChar.c_str();
         const char * delimiterChar = delimiter.c_str();
+
         glutBitmapString(GLUT_BITMAP_HELVETICA_10, (const unsigned char *) labelX);
         glutBitmapString(GLUT_BITMAP_HELVETICA_10, (const unsigned char *) delimiterChar);
         glutBitmapString(GLUT_BITMAP_HELVETICA_10, (const unsigned char *) labelY);
+
         glPopMatrix();
     }
 }
@@ -1631,12 +2026,30 @@ bool Coordinate::getCentroidsLoaded()
 }
 
 /**
+ * This method is used to get if the new centroids are stored
+ * @author Mikayel Egibyan
+ **/
+bool Coordinate::getNewCentroidsLoaded()
+{
+    return newCentroidsLoaded;
+}
+
+/**
  * This method is used to set the centroids are stored
  * @author Mikayel Egibyan
  **/
 void Coordinate::setCentroidsLoaded(bool value)
 {
     centroidsLoaded = value;
+}
+
+/**
+ * This method is used to set the new centroids are stored
+ * @author Mikayel Egibyan
+ **/
+void Coordinate::setNewCentroidsLoaded(bool value)
+{
+    newCentroidsLoaded = value;
 }
 
 /**
