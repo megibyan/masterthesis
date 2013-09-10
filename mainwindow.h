@@ -54,6 +54,7 @@ public:
     QPointF getLineRelease();
     bool getdivisionMode();
     void setdivisionMode(bool);
+    void generateNewCentroids(QHash<QString, QVector<float> >);
 
 private slots:    
     void on_actionExit_triggered();
@@ -78,7 +79,6 @@ private slots:
     void divideCluster();
     void on_radioButton_2_clicked();
     void on_Reset_clicked();
-    void on_step_cpmbo_box_currentIndexChanged();
 
 private:
     QVector<float> mouse;
@@ -106,6 +106,13 @@ private:
     QVector<int> indicesRect;
     QHash<QString, QVector<float> > stepByStepCluster;
     bool divisionMode=false;
+    QHash<int, QVector<float> > clusterMeanCoordinate;
+    QHash<int, QVector<float> > prevClusterMeanCoordinate;
+    QVector<float> minDim;
+    QVector<float> maxDim;
+    bool rightButtonPressed = false;
+    bool leftButtonPressed = false;
+    bool leftButtonReleased = false;
 };
 
 #endif // MAINWINDOW_H
